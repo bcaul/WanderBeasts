@@ -3,20 +3,23 @@
 @tailwind utilities;
 
 /* Force pixel-perfect rendering for Pokengine creature sprites */
-/* Use pixelated for pixel art - prevents blur when scaling */
+/* This applies to ALL images from pokengine.b-cdn.net */
 img[src*="pokengine.b-cdn.net"] {
-  /* Standard property - use pixelated for pixel art */
+  /* Use pixelated for pixel art - forces nearest-neighbor scaling */
+  /* This ensures sprites remain sharp when scaled */
   image-rendering: pixelated;
-  /* Browser-specific fallbacks */
+  /* Fallback for browsers that don't support pixelated */
   image-rendering: -moz-crisp-edges;
   image-rendering: crisp-edges;
-  -ms-interpolation-mode: nearest-neighbor;
-  /* Prevent blur from transforms - enable hardware acceleration */
+  /* Prevent blur from hardware acceleration */
   transform: translateZ(0);
   -webkit-transform: translateZ(0);
+  will-change: transform;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
-  /* Prevent anti-aliasing that causes blur */
+  /* Prevent blur from interpolation (IE/Edge legacy) */
+  -ms-interpolation-mode: nearest-neighbor;
+  /* Ensure images are rendered without smoothing */
   -webkit-font-smoothing: none;
   -moz-osx-font-smoothing: unset;
 }

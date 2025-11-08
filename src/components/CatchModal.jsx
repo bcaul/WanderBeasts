@@ -38,7 +38,6 @@ export default function CatchModal({ creature, userLocation, onClose }) {
   if (creature.latitude !== undefined && creature.longitude !== undefined) {
     lat = parseFloat(creature.latitude)
     lon = parseFloat(creature.longitude)
-    console.log('CatchModal: Using direct coordinates:', { lat, lon })
   } else if (creature.location) {
     // Fallback: Parse from location string/WKB if direct coordinates not available
     const parseLocation = (location) => {
@@ -85,7 +84,6 @@ export default function CatchModal({ creature, userLocation, onClose }) {
     if (parsed) {
       lon = parsed.lon
       lat = parsed.lat
-      console.log('CatchModal: Parsed coordinates from location:', { lat, lon })
     }
   }
   
@@ -101,12 +99,6 @@ export default function CatchModal({ creature, userLocation, onClose }) {
       return
     }
 
-    // Log locations for debugging
-    console.log('Catch attempt:', {
-      userLocation: { lat: userLocation.latitude, lon: userLocation.longitude },
-      creatureLocation: { lat, lon },
-    })
-
     // Check if within range (50 meters)
     // Make sure coordinates are valid numbers
     const userLat = parseFloat(userLocation.latitude)
@@ -114,22 +106,12 @@ export default function CatchModal({ creature, userLocation, onClose }) {
     const creatureLat = parseFloat(lat)
     const creatureLon = parseFloat(lon)
     
-    console.log('Distance check:', {
-      user: { lat: userLat, lon: userLon },
-      creature: { lat: creatureLat, lon: creatureLon },
-      userLocation,
-      parsedCreature: { lat, lon },
-      creatureObject: creature,
-    })
-    
     if (isNaN(userLat) || isNaN(userLon) || isNaN(creatureLat) || isNaN(creatureLon)) {
-      console.error('Invalid coordinates:', { userLat, userLon, creatureLat, creatureLon })
       setError('Invalid location data. Please try again.')
       return
     }
     
     const distance = calculateDistance(userLat, userLon, creatureLat, creatureLon)
-    console.log(`Distance to creature: ${distance.toFixed(2)} meters`)
     
     // For testing: allow catching if within 100m (more lenient)
     if (distance > 100) {
@@ -170,7 +152,6 @@ export default function CatchModal({ creature, userLocation, onClose }) {
           console.error('Failed to create profile:', createProfileError)
           throw new Error('Profile not found and could not be created. Please contact support or try signing out and back in.')
         }
-        console.log('Profile created successfully for user:', user.id)
       }
 
       // Check if spawn still exists and hasn't expired
@@ -284,13 +265,7 @@ export default function CatchModal({ creature, userLocation, onClose }) {
                   src={getCreatureSprite(creatureType)} 
                   alt={creatureType.name}
                   className="w-32 h-32 object-contain"
-                  style={{
-                    imageRendering: 'crisp-edges',
-                    WebkitImageRendering: 'crisp-edges',
-                    msImageRendering: 'crisp-edges',
-                    backfaceVisibility: 'hidden',
-                    WebkitBackfaceVisibility: 'hidden',
-                  }}
+                  referrerPolicy="no-referrer"
                   onError={(e) => {
                     e.target.style.display = 'none'
                     e.target.nextSibling.style.display = 'block'
@@ -316,13 +291,7 @@ export default function CatchModal({ creature, userLocation, onClose }) {
                     src={getCreatureSprite(creatureType)} 
                     alt={creatureType.name}
                     className="w-32 h-32 object-contain"
-                    style={{
-                      imageRendering: 'crisp-edges',
-                      imageRendering: '-webkit-optimize-contrast',
-                      transform: 'scale(1)',
-                      backfaceVisibility: 'hidden',
-                      WebkitBackfaceVisibility: 'hidden',
-                    }}
+                    referrerPolicy="no-referrer"
                     onError={(e) => {
                       e.target.style.display = 'none'
                       e.target.nextSibling.style.display = 'block'

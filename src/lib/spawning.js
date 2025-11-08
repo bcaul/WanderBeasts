@@ -111,7 +111,6 @@ export async function generateSpawns(latitude, longitude, radiusMeters = 500, in
         // Park boost (2-3x multiplier)
         if (inPark) {
           spawnChance *= 2.5
-          console.log('Park boost active! Spawn chance increased.')
         }
 
         if (Math.random() < spawnChance) {
@@ -128,11 +127,9 @@ export async function generateSpawns(latitude, longitude, radiusMeters = 500, in
       }
     }
     
-    console.log(`Generated ${spawns.length} spawns within ${spawnRadius}m of user location`)
 
     // Insert spawns into database (PostGIS geography)
     if (spawns.length > 0) {
-      console.log(`Attempting to insert ${spawns.length} spawns into database...`)
       
       // Check if user is authenticated
       const { data: { user } } = await supabase.auth.getUser()
@@ -163,8 +160,6 @@ export async function generateSpawns(latitude, longitude, radiusMeters = 500, in
         }
       })
       
-      console.log('Inserting spawns:', spawnsToInsert.length, 'spawns')
-      console.log('Sample spawn:', JSON.stringify(spawnsToInsert[0], null, 2))
       
       const { data, error: insertError } = await supabase
         .from('spawns')
@@ -184,11 +179,6 @@ export async function generateSpawns(latitude, longitude, radiusMeters = 500, in
         }
         
         throw insertError
-      } else {
-        console.log(`Successfully inserted ${spawns.length} spawns`)
-        if (data) {
-          console.log('Inserted spawn IDs:', data.map(s => s.id))
-        }
       }
     } else {
       console.warn('No spawns generated. This might be due to low spawn chance or no creature types available.')
@@ -269,7 +259,6 @@ export async function getNearbySpawns(latitude, longitude, radiusMeters = 500) {
     })
 
     if (!rpcError && rpcData && rpcData.length > 0) {
-      console.log(`RPC function returned ${rpcData.length} spawns`)
       // Fetch creature types for the spawns
       // Note: location will be in WKB hex format, which we'll parse
       const spawnIds = rpcData.map(s => s.id)
@@ -283,7 +272,6 @@ export async function getNearbySpawns(latitude, longitude, radiusMeters = 500) {
         .gte('expires_at', new Date().toISOString())
 
       if (!fetchError && spawnsWithCreatures) {
-        console.log(`Fetched ${spawnsWithCreatures.length} spawns with creature types`)
         
         // Parse WKB hex locations to coordinates
         const parsedSpawns = spawnsWithCreatures.map(spawn => {
@@ -316,18 +304,6 @@ export async function getNearbySpawns(latitude, longitude, radiusMeters = 500) {
           return spawn
         })
         
-        // Log sample spawn for debugging
-        if (parsedSpawns.length > 0) {
-          console.log('Sample spawn:', {
-            id: parsedSpawns[0].id,
-            location: parsedSpawns[0].location?.substring(0, 30) + '...',
-            longitude: parsedSpawns[0].longitude,
-            latitude: parsedSpawns[0].latitude,
-            creature: parsedSpawns[0].creature_types?.name,
-            creatureImageUrl: parsedSpawns[0].creature_types?.image_url,
-            creatureFull: parsedSpawns[0].creature_types,
-          })
-        }
         
         return parsedSpawns
       } else if (fetchError) {
@@ -364,13 +340,11 @@ export async function getNearbySpawns(latitude, longitude, radiusMeters = 500) {
       
       // Parse WKB hex strings to coordinates
       if (rawSpawns && rawSpawns.length > 0) {
-        console.log('Parsing WKB hex locations from fallback query...')
         const parsedSpawns = rawSpawns.map(spawn => {
           if (typeof spawn.location === 'string' && spawn.location.startsWith('0101')) {
             // This is WKB hex format - parse it
             const coords = parseWKBHex(spawn.location)
             if (coords) {
-              console.log(`Parsed WKB: ${spawn.location.substring(0, 20)}... -> [${coords.lon}, ${coords.lat}]`)
               return {
                 ...spawn,
                 longitude: coords.lon,
@@ -394,7 +368,6 @@ export async function getNearbySpawns(latitude, longitude, radiusMeters = 500) {
           return null
         }).filter(spawn => spawn !== null && spawn.longitude !== undefined && spawn.latitude !== undefined)
         
-        console.log(`Parsed ${parsedSpawns.length} spawns from ${rawSpawns.length} raw spawns`)
         
         // Filter by distance
         const nearbySpawns = parsedSpawns.filter(spawn => {
@@ -402,7 +375,6 @@ export async function getNearbySpawns(latitude, longitude, radiusMeters = 500) {
           return distance <= radiusMeters
         })
         
-        console.log(`Filtered to ${nearbySpawns.length} nearby spawns (within ${radiusMeters}m)`)
         return nearbySpawns
       }
       return []
@@ -419,7 +391,6 @@ export async function getNearbySpawns(latitude, longitude, radiusMeters = 500) {
 
     // Filter by approximate distance (client-side fallback)
     // Parse location strings and calculate distance
-    console.log(`Filtering ${allSpawns.length} spawns by distance...`)
     const nearbySpawns = allSpawns.filter(spawn => {
       if (!spawn.location) {
         console.warn('Spawn missing location:', spawn.id)
@@ -428,7 +399,6 @@ export async function getNearbySpawns(latitude, longitude, radiusMeters = 500) {
       
       // Log location format for debugging
       if (allSpawns.indexOf(spawn) === 0) {
-        console.log('Sample location format:', typeof spawn.location, spawn.location)
       }
       
       // Parse PostGIS point string
@@ -442,13 +412,11 @@ export async function getNearbySpawns(latitude, longitude, radiusMeters = 500) {
       const isNearby = distance <= radiusMeters
       
       if (isNearby) {
-        console.log(`Spawn ${spawn.id} is ${distance.toFixed(0)}m away (within ${radiusMeters}m)`)
       }
       
       return isNearby
     })
     
-    console.log(`Found ${nearbySpawns.length} nearby spawns out of ${allSpawns.length} total`)
 
     // Sort by distance (closest first)
     nearbySpawns.sort((a, b) => {

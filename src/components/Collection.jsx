@@ -143,7 +143,7 @@ export default function Collection() {
         <div className="bg-surface rounded-lg p-4">
           <p className="text-gray-400 text-sm">Completion</p>
           <p className="text-2xl font-bold text-white">
-            {filteredCatches.length}/5
+            {filteredCatches.length}/50
           </p>
         </div>
       </div>
@@ -208,13 +208,7 @@ export default function Collection() {
                     src={getCreatureSprite(item.creature)} 
                     alt={item.creature.name}
                     className="w-24 h-24 object-contain"
-                    style={{
-                      imageRendering: 'crisp-edges',
-                      WebkitImageRendering: 'crisp-edges',
-                      msImageRendering: 'crisp-edges',
-                      backfaceVisibility: 'hidden',
-                      WebkitBackfaceVisibility: 'hidden',
-                    }}
+                    referrerPolicy="no-referrer"
                     onError={(e) => {
                       e.target.style.display = 'none'
                       e.target.nextSibling.style.display = 'block'

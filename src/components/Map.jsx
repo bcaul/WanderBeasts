@@ -91,7 +91,6 @@ export default function Map() {
     
     // Generate immediately if it's been more than 30 seconds, or on first load
     if (timeSinceLastSpawn > 30 * 1000 || lastSpawnGenRef.current === 0) {
-      console.log('Generating spawns for location:', location.latitude, location.longitude)
       generateSpawnsForLocation(location.latitude, location.longitude)
       lastSpawnGenRef.current = now
     }
@@ -102,7 +101,6 @@ export default function Map() {
     if (!location) return
 
     const interval = setInterval(() => {
-      console.log('Periodic spawn generation triggered')
       generateSpawnsForLocation(location.latitude, location.longitude)
       lastSpawnGenRef.current = Date.now()
     }, 2 * 60 * 1000) // 2 minutes
@@ -141,7 +139,6 @@ export default function Map() {
         timestamp: new Date().toLocaleTimeString(),
       })
       
-      console.log(`Spawn generation complete. Generated ${spawnCount} spawns.`)
       
       // Force refresh creatures list after generating spawns
       // The useCreatures hook will pick this up on its next refresh (10 seconds)
@@ -160,7 +157,6 @@ export default function Map() {
   // Manual spawn generation (for testing)
   const handleManualSpawn = () => {
     if (location) {
-      console.log('Manual spawn generation triggered')
       generateSpawnsForLocation(location.latitude, location.longitude)
     }
   }
@@ -180,7 +176,6 @@ export default function Map() {
       return
     }
 
-    console.log(`Creating markers for ${creatures.length} creatures`)
 
     // Clear existing markers
     markersRef.current.forEach(marker => marker.remove())
@@ -248,8 +243,6 @@ export default function Map() {
         marker.getElement().addEventListener('click', (e) => {
           e.stopPropagation() // Prevent map click events
           e.preventDefault() // Prevent default behavior
-          console.log('Creature marker clicked:', spawn.creature_types.name)
-          console.log('Passing coordinates to modal:', { lat, lon })
           // Ensure coordinates are correctly passed - use the parsed values
           setSelectedCreature({
             ...spawn,
@@ -263,14 +256,12 @@ export default function Map() {
         markersRef.current.push(marker)
         markersCreated++
         
-        console.log(`Created marker ${markersCreated} for ${spawn.creature_types.name} at [${lon}, ${lat}]`)
       } catch (error) {
         console.error(`Error creating marker for spawn ${index}:`, error)
         markersSkipped++
       }
     })
 
-    console.log(`Marker creation complete: ${markersCreated} created, ${markersSkipped} skipped`)
 
     return () => {
       markersRef.current.forEach(marker => marker.remove())
@@ -391,16 +382,7 @@ export default function Map() {
     // Mapbox markers are positioned automatically based on setLngLat
     
     // Add creature sprite or emoji fallback
-    // DEBUG: Log creature type data
-    console.log(`Creating marker for ${creatureType.name}:`, {
-      name: creatureType.name,
-      image_url: creatureType.image_url,
-      hasImageUrl: !!creatureType.image_url,
-      imageUrlType: typeof creatureType.image_url,
-    })
-    
     const spriteUrl = getCreatureSprite(creatureType)
-    console.log(`Sprite URL for ${creatureType.name}:`, spriteUrl)
     
     if (spriteUrl && !spriteUrl.includes('{SPRITE_ID}')) {
       // Only use sprite URL if it's valid (no placeholder)
@@ -423,14 +405,8 @@ export default function Map() {
       img.onerror = (e) => {
         if (errorHandled) return // Prevent multiple error handlers
         errorHandled = true
-        console.warn(`❌ Failed to load sprite for ${creatureType.name}:`, spriteUrl)
-        // Check Network tab in dev tools for actual HTTP error
         const emoji = getCreatureEmoji(creatureType.name)
         el.innerHTML = `<span style="font-size: 22px; line-height: 1; display: block;">${emoji}</span>`
-      }
-      
-      img.onload = () => {
-        console.log(`✅ Successfully loaded sprite for ${creatureType.name}:`, spriteUrl)
       }
       
       // Add to DOM and set src
@@ -438,7 +414,6 @@ export default function Map() {
       img.src = spriteUrl
     } else {
       // Fallback to emoji if no valid sprite URL
-      console.warn(`⚠️ No valid sprite URL for ${creatureType.name}. spriteUrl:`, spriteUrl)
       const emoji = getCreatureEmoji(creatureType.name)
       el.innerHTML = `<span style="font-size: 22px; line-height: 1; display: block;">${emoji}</span>`
     }

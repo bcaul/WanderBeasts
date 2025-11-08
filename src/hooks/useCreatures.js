@@ -15,7 +15,6 @@ export function useCreatures(latitude, longitude, radiusMeters = 500, refreshInt
 
   useEffect(() => {
     if (!latitude || !longitude) {
-      console.log('useCreatures: No location provided', { latitude, longitude })
       setCreatures([])
       return
     }
@@ -24,9 +23,7 @@ export function useCreatures(latitude, longitude, radiusMeters = 500, refreshInt
       try {
         setLoading(true)
         setError(null)
-        console.log('Fetching nearby creatures...', { latitude, longitude, radiusMeters })
         const spawns = await getNearbySpawns(latitude, longitude, radiusMeters)
-        console.log(`Found ${spawns.length} creatures nearby`)
         setCreatures(spawns || [])
       } catch (err) {
         setError(err.message)

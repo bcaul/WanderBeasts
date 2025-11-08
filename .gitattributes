@@ -1,0 +1,27 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# SQL files
+*.sql text eol=lf
+
+# JavaScript files
+*.js text eol=lf
+*.jsx text eol=lf
+
+# JSON files
+*.json text eol=lf
+
+# Markdown files
+*.md text eol=lf
+
+# CSS files
+*.css text eol=lf
+
+# Config files
+*.config.js text eol=lf
+*.config.ts text eol=lf
+
+# Lock files (keep as-is to avoid merge conflicts)
+package-lock.json merge=union
+yarn.lock merge=union
+

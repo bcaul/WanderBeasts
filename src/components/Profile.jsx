@@ -185,14 +185,14 @@ export default function Profile() {
                 <div className="flex justify-between mb-2">
                   <span className="text-gray-300">Completion</span>
                   <span className="text-white font-bold">
-                    {stats.uniqueSpecies}/5 ({Math.round((stats.uniqueSpecies / 5) * 100)}%)
+                    {stats.uniqueSpecies}/50 ({Math.round((stats.uniqueSpecies / 50) * 100)}%)
                   </span>
                 </div>
                 <div className="w-full h-4 bg-gray-700 rounded-full overflow-hidden">
                   <div
                     className="h-full bg-gradient-to-r from-primary to-accent transition-all"
                     style={{
-                      width: `${(stats.uniqueSpecies / 5) * 100}%`,
+                      width: `${(stats.uniqueSpecies / 50) * 100}%`,
                     }}
                   />
                 </div>
