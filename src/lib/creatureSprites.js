@@ -65,6 +65,16 @@ export function getCreatureSprite(creature) {
 }
 
 /**
+ * Get creature emoji fallback
+ * @param {string} name - Creature name
+ * @returns {string} Emoji character
+ */
+export function getCreatureEmoji(name) {
+  // Generic fallback emoji for all creatures
+  return '🐾'
+}
+
+/**
  * Check if an image URL is valid (for error handling)
  * @param {string} url - Image URL to check
  * @returns {Promise<boolean>} True if image loads successfully

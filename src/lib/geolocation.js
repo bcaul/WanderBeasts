@@ -143,3 +143,22 @@ export function isWithinRange(userLat, userLon, targetLat, targetLon, rangeMeter
   return distance <= rangeMeters
 }
 
+/**
+ * Validate if coordinates are valid
+ * @param {number} lat - Latitude
+ * @param {number} lon - Longitude
+ * @returns {boolean}
+ */
+export function isValidCoordinate(lat, lon) {
+  if (typeof lat !== 'number' || typeof lon !== 'number') {
+    return false
+  }
+  if (isNaN(lat) || isNaN(lon)) {
+    return false
+  }
+  if (Math.abs(lat) > 90 || Math.abs(lon) > 180) {
+    return false
+  }
+  return true
+}
+

@@ -195,6 +195,71 @@ export default function CatchModal({ creature, userLocation, onClose }) {
       // Update user stats
       await supabase.rpc('increment_catches', { user_id: user.id })
 
+      // Update collect challenge progress
+      try {
+        // Get user's active collect challenges for this creature type
+        const { data: userChallenges } = await supabase
+          .from('user_challenges')
+          .select(`
+            *,
+            challenges!inner (id, challenge_type, target_creature_type_id, location, radius_meters)
+          `)
+          .eq('user_id', user.id)
+          .eq('completed', false)
+          .eq('challenges.challenge_type', 'collect')
+          .eq('challenges.target_creature_type_id', creatureType.id)
+
+        if (userChallenges && userChallenges.length > 0) {
+          // Check if catch location is within challenge radius
+          for (const userChallenge of userChallenges) {
+            const challenge = userChallenge.challenges
+            if (!challenge || !challenge.location) continue
+
+            // Parse challenge location
+            const parseLocation = (location) => {
+              if (typeof location === 'object' && location.coordinates) {
+                return { lon: location.coordinates[0], lat: location.coordinates[1] }
+              }
+              const match = typeof location === 'string' ? location.match(/POINT\(([^)]+)\)/) : null
+              if (match) {
+                const coords = match[1].trim().split(/\s+/)
+                if (coords.length >= 2) {
+                  return { lon: parseFloat(coords[0]), lat: parseFloat(coords[1]) }
+                }
+              }
+              return null
+            }
+
+            const challengeCoords = parseLocation(challenge.location)
+            if (!challengeCoords) continue
+
+            // Calculate distance to challenge location
+            const R = 6371e3 // Earth's radius in meters
+            const φ1 = (userLocation.latitude * Math.PI) / 180
+            const φ2 = (challengeCoords.lat * Math.PI) / 180
+            const Δφ = ((challengeCoords.lat - userLocation.latitude) * Math.PI) / 180
+            const Δλ = ((challengeCoords.lon - userLocation.longitude) * Math.PI) / 180
+            const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+              Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2)
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+            const distance = R * c
+
+            // If within challenge radius, update progress
+            if (distance <= challenge.radius_meters) {
+              await supabase.rpc('update_challenge_progress', {
+                p_user_id: user.id,
+                p_challenge_id: challenge.id,
+                p_progress_increment: 1,
+              })
+              console.log(`Updated collect challenge ${challenge.id} progress`)
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error updating challenge progress:', error)
+        // Don't fail the catch if challenge update fails
+      }
+
       setCaught(true)
 
       // Close modal after 2 seconds

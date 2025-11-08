@@ -448,9 +448,9 @@ function parseWKBHex(hex) {
     }
     
     // WKB Extended format with SRID:
-    // Byte 0: Endianness (01 = little endian)
-    // Bytes 1-4: Geometry type (01000000 = Point with SRID)
-    // Bytes 5-8: SRID (20E61000 = 4326 in little endian: 00 10 E6 20)
+    // Byte 0: Endianness (01 means little endian)
+    // Bytes 1-4: Geometry type (01000000 means Point with SRID)
+    // Bytes 5-8: SRID (20E61000 means 4326 in little endian: 00 10 E6 20)
     // Bytes 9-16: X coordinate (longitude) as double
     // Bytes 17-24: Y coordinate (latitude) as double
     

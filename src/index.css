@@ -112,3 +112,17 @@ body {
   animation: catch-celebration 0.6s ease-in-out;
 }
 
+/* Challenge marker pulse animation */
+@keyframes pulse-challenge {
+  0%, 100% {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5), 0 0 0 0 rgba(99, 102, 241, 0.7);
+  }
+  50% {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5), 0 0 0 8px rgba(99, 102, 241, 0);
+  }
+}
+
+.pulse-challenge {
+  animation: pulse-challenge 2s ease-in-out infinite;
+}
+

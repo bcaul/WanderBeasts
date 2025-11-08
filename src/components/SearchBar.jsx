@@ -1,15 +1,18 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase.js'
 import { useLocation } from '../hooks/useLocation.js'
-import { Search, MapPin, Grid3x3 } from 'lucide-react'
+import { useChallenges } from '../hooks/useChallenges.js'
+import { getCreatureSprite } from '../lib/creatureSprites.js'
+import { Search, MapPin, Grid3x3, Target } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 export default function SearchBar() {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
   const [loading, setLoading] = useState(false)
-  const [searchType, setSearchType] = useState('all') // all, creatures, gyms
+  const [searchType, setSearchType] = useState('all') // all, creatures, gyms, challenges
   const { location } = useLocation()
+  const { challenges } = useChallenges(location?.latitude, location?.longitude)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -72,6 +75,33 @@ export default function SearchBar() {
         }
       }
 
+      // Search challenges
+      if (searchType === 'all' || searchType === 'challenges') {
+        if (challenges && challenges.length > 0) {
+          const matchingChallenges = challenges.filter(challenge => 
+            challenge.name.toLowerCase().includes(query.toLowerCase()) ||
+            challenge.description.toLowerCase().includes(query.toLowerCase())
+          ).slice(0, 10)
+
+          results.push(
+            ...matchingChallenges.map(challenge => ({
+              type: 'challenge',
+              id: challenge.id,
+              name: challenge.name,
+              description: challenge.description,
+              challenge_type: challenge.challenge_type,
+              difficulty: challenge.difficulty,
+              reward_points: challenge.reward_points,
+              accepted: challenge.accepted,
+              completed: challenge.completed,
+              progress_value: challenge.progress_value,
+              target_value: challenge.target_value,
+              data: challenge,
+            }))
+          )
+        }
+      }
+
       setResults(results)
     } catch (error) {
       console.error('Error performing search:', error)
@@ -87,6 +117,10 @@ export default function SearchBar() {
       // Navigate to map and focus on gym location
       navigate('/')
       // TODO: Focus map on gym location
+    } else if (result.type === 'challenge') {
+      // Navigate to map and show challenge panel
+      navigate('/')
+      // Challenge panel will be opened from Map component
     }
   }
 
@@ -123,7 +157,7 @@ export default function SearchBar() {
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search for creatures or gyms..."
+          placeholder="Search for creatures, gyms, or challenges..."
           className="w-full pl-12 pr-4 py-4 bg-surface border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
         />
       </div>
@@ -162,6 +196,17 @@ export default function SearchBar() {
           <MapPin size={16} />
           Gyms
         </button>
+        <button
+          onClick={() => setSearchType('challenges')}
+          className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
+            searchType === 'challenges'
+              ? 'bg-primary text-white'
+              : 'bg-surface text-gray-300 hover:bg-gray-700'
+          }`}
+        >
+          <Target size={16} />
+          Challenges
+        </button>
       </div>
 
       {/* Results */}
@@ -188,19 +233,22 @@ export default function SearchBar() {
             >
               {result.type === 'creature' ? (
                 <div className="flex items-center gap-4">
-                  <div className="text-4xl">
-                    {getCreatureSprite(result) ? (
+                  <div className="text-4xl flex items-center justify-center w-12 h-12">
+                    {getCreatureSprite(result.data) ? (
                       <img 
-                        src={getCreatureSprite(result)} 
+                        src={getCreatureSprite(result.data)} 
                         alt={result.name}
                         className="w-12 h-12 object-contain"
+                        style={{ imageRendering: 'pixelated' }}
                         onError={(e) => {
                           e.target.style.display = 'none'
-                          e.target.nextSibling.style.display = 'block'
+                          if (e.target.nextSibling) {
+                            e.target.nextSibling.style.display = 'block'
+                          }
                         }}
                       />
                     ) : null}
-                    <span style={{ display: getCreatureSprite(result) ? 'none' : 'inline' }}>
+                    <span className="text-4xl" style={{ display: getCreatureSprite(result.data) ? 'none' : 'inline-block' }}>
                       {getCreatureEmoji(result.name)}
                     </span>
                   </div>
@@ -211,7 +259,7 @@ export default function SearchBar() {
                     </p>
                   </div>
                 </div>
-              ) : (
+              ) : result.type === 'gym' ? (
                 <div className="flex items-center gap-4">
                   <MapPin className="text-primary" size={24} />
                   <div className="flex-1">
@@ -221,7 +269,51 @@ export default function SearchBar() {
                     )}
                   </div>
                 </div>
-              )}
+              ) : result.type === 'challenge' ? (
+                <div className="flex items-center gap-4">
+                  <Target className={`${result.completed ? 'text-green-400' : result.accepted ? 'text-primary' : 'text-yellow-400'}`} size={24} />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-bold text-white text-lg">{result.name}</h3>
+                      <span className={`text-xs px-2 py-0.5 rounded ${
+                        result.difficulty === 'easy' ? 'bg-green-500/20 text-green-400' :
+                        result.difficulty === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
+                        result.difficulty === 'hard' ? 'bg-orange-500/20 text-orange-400' :
+                        'bg-red-500/20 text-red-400'
+                      }`}>
+                        {result.difficulty}
+                      </span>
+                      {result.completed && (
+                        <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded">
+                          Completed
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-gray-400 text-sm">{result.description}</p>
+                    {result.accepted && !result.completed && (
+                      <div className="mt-2">
+                        <div className="flex items-center justify-between text-xs text-gray-400 mb-1">
+                          <span>Progress</span>
+                          <span>{result.progress_value || 0} / {result.target_value}</span>
+                        </div>
+                        <div className="w-full bg-gray-700 rounded-full h-1.5">
+                          <div
+                            className="bg-primary h-1.5 rounded-full transition-all"
+                            style={{
+                              width: `${Math.min(((result.progress_value || 0) / result.target_value) * 100, 100)}%`
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                    <div className="mt-2 flex items-center gap-2 text-xs text-gray-500">
+                      <span>🎯 {result.challenge_type}</span>
+                      <span>•</span>
+                      <span>🏆 {result.reward_points} pts</span>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
             </button>
           ))}
         </div>
@@ -230,7 +322,7 @@ export default function SearchBar() {
       {query.length < 2 && (
         <div className="text-center py-12">
           <Search className="mx-auto text-gray-600 mb-4" size={48} />
-          <p className="text-gray-400">Start typing to search for creatures or gyms</p>
+          <p className="text-gray-400">Start typing to search for creatures, gyms, or challenges</p>
         </div>
       )}
     </div>

@@ -1,14 +1,19 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import mapboxgl from 'mapbox-gl'
 import { useLocation } from '../hooks/useLocation.js'
+import { useLocationTracking } from '../hooks/useLocationTracking.js'
 import { useCreatures } from '../hooks/useCreatures.js'
+import { useChallenges } from '../hooks/useChallenges.js'
 import { checkIfInParkCached, getNearbyParks } from '../lib/overpass.js'
 import { generateSpawns } from '../lib/spawning.js'
+import { generateChallengesNearParks, generateChallengesAtLocation } from '../lib/generateChallenges.js'
 import { getCountryCodeCached } from '../lib/geocoding.js'
-import { getCreatureSprite } from '../lib/creatureSprites.js'
+import { getCreatureSprite, getCreatureEmoji } from '../lib/creatureSprites.js'
+import { Target } from 'lucide-react'
 import CreatureMarker from './CreatureMarker.jsx'
 import CatchModal from './CatchModal.jsx'
 import AIAssistant from './AIAssistant.jsx'
+import ChallengePanel from './ChallengePanel.jsx'
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN || ''
 
@@ -21,21 +26,40 @@ export default function Map() {
     location?.latitude,
     location?.longitude
   )
+  const { challenges, loading: challengesLoading } = useChallenges(
+    location?.latitude,
+    location?.longitude
+  )
+  
+  // Track location for walking challenges
+  useLocationTracking(location)
+  
   const [selectedCreature, setSelectedCreature] = useState(null)
+  const [selectedChallenge, setSelectedChallenge] = useState(null)
   const [inPark, setInPark] = useState(false)
   const [parkName, setParkName] = useState(null)
   const markersRef = useRef([])
+  const challengeMarkersRef = useRef([])
   const lastSpawnGenRef = useRef(0)
   const [spawnGenerating, setSpawnGenerating] = useState(false)
   const [spawnDebugInfo, setSpawnDebugInfo] = useState(null)
+  const [showChallengePanel, setShowChallengePanel] = useState(false)
+  const [generatingChallenges, setGeneratingChallenges] = useState(false)
+  const lastChallengeGenRef = useRef(0)
 
   // Initialize map
   useEffect(() => {
     if (map.current || !mapContainer.current) return
 
+    // Mapbox style configuration
+    // You can change this to your custom Mapbox style URL:
+    // Example: 'mapbox://styles/your-username/your-style-id'
+    // Or use a standard Mapbox style: 'mapbox://styles/mapbox/dark-v11'
+    const mapboxStyle = import.meta.env.VITE_MAPBOX_STYLE || 'mapbox://styles/taramulhall/cmhqieqsu004201s56pwv93xw'
+    
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/dark-v11',
+      style: mapboxStyle,
       center: [0, 0],
       zoom: 15,
     })
@@ -455,11 +479,136 @@ export default function Map() {
     return colors[rarity] || colors.common
   }
 
-  // Get creature emoji (fallback if sprite fails to load)
-  const getCreatureEmoji = (name) => {
-    // Generic fallback emoji for all creatures
-    return '🐾'
+  // Generate challenges near parks
+  const generateChallengesForLocation = useCallback(async (lat, lon) => {
+    const now = Date.now()
+    // Throttle challenge generation (once per 5 minutes)
+    if (now - lastChallengeGenRef.current < 5 * 60 * 1000) {
+      console.log('Challenge generation throttled')
+      return
+    }
+
+    try {
+      setGeneratingChallenges(true)
+      lastChallengeGenRef.current = now
+
+      // First try to generate challenges near actual parks
+      const challengesCreated = await generateChallengesNearParks(lat, lon, 5000)
+      
+      // If no challenges were created (no parks found), create some at the location
+      if (challengesCreated === 0) {
+        console.log('No parks found, creating challenges at location')
+        await generateChallengesAtLocation(lat, lon, 8)
+      }
+
+      console.log('Challenge generation complete')
+      // Note: Challenges will refresh automatically via useChallenges hook
+    } catch (error) {
+      console.error('Error generating challenges:', error)
+    } finally {
+      setGeneratingChallenges(false)
+    }
+  }, [])
+
+  // Auto-generate challenges when location is available and no challenges nearby
+  useEffect(() => {
+    if (!location || !mapLoaded || challengesLoading || generatingChallenges) return
+
+    // If no challenges nearby, generate some (only once on mount)
+    if (challenges && challenges.length === 0) {
+      const now = Date.now()
+      // Only auto-generate once (check if we've generated before)
+      if (lastChallengeGenRef.current === 0) {
+        console.log('No challenges nearby, auto-generating challenges...')
+        // Delay auto-generation slightly to avoid blocking
+        const timer = setTimeout(() => {
+          generateChallengesForLocation(location.latitude, location.longitude)
+        }, 3000)
+        return () => clearTimeout(timer)
+      }
+    }
+  }, [location, challenges, mapLoaded, challengesLoading, generatingChallenges, generateChallengesForLocation])
+
+  // Create challenge marker element
+  const createChallengeMarker = (challenge) => {
+    const el = document.createElement('div')
+    el.className = 'challenge-marker'
+    el.style.width = '36px'
+    el.style.height = '36px'
+    el.style.borderRadius = '50%'
+    el.style.backgroundColor = challenge.completed 
+      ? '#10B981' // Green for completed
+      : challenge.accepted 
+      ? '#6366F1' // Indigo for accepted
+      : '#F59E0B' // Amber for available
+    el.style.border = '3px solid #FFFFFF'
+    el.style.display = 'flex'
+    el.style.alignItems = 'center'
+    el.style.justifyContent = 'center'
+    el.style.cursor = 'pointer'
+    el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)'
+    
+    // Challenge icon (Target/Trophy)
+    const icon = document.createElement('span')
+    icon.style.fontSize = '20px'
+    icon.innerHTML = challenge.completed ? '🏆' : '🎯'
+    el.appendChild(icon)
+    
+    // Add pulsing animation for available challenges
+    if (!challenge.accepted && !challenge.completed) {
+      el.style.animation = 'pulse-challenge 2s ease-in-out infinite'
+    }
+    
+    el.title = `${challenge.name} - ${challenge.difficulty}`
+    return el
   }
+
+  // Update challenge markers
+  useEffect(() => {
+    if (!map.current || !mapLoaded) return
+
+    // Clear existing challenge markers
+    challengeMarkersRef.current.forEach(marker => marker.remove())
+    challengeMarkersRef.current = []
+
+    if (!challenges || challenges.length === 0) {
+      return
+    }
+
+    console.log(`Creating markers for ${challenges.length} challenges`)
+
+    challenges.forEach((challenge) => {
+      if (!challenge.latitude || !challenge.longitude) {
+        console.warn('Challenge missing coordinates:', challenge.id)
+        return
+      }
+
+      try {
+        const challengeMarker = createChallengeMarker(challenge)
+        const marker = new mapboxgl.Marker({
+          element: challengeMarker,
+          anchor: 'center',
+        })
+          .setLngLat([challenge.longitude, challenge.latitude])
+          .addTo(map.current)
+
+        challengeMarker.addEventListener('click', (e) => {
+          e.stopPropagation()
+          setSelectedChallenge(challenge)
+          setShowChallengePanel(true)
+        })
+
+        challengeMarkersRef.current.push(marker)
+      } catch (error) {
+        console.error('Error creating challenge marker:', error)
+      }
+    })
+
+    return () => {
+      challengeMarkersRef.current.forEach(marker => marker.remove())
+      challengeMarkersRef.current = []
+    }
+  }, [challenges, mapLoaded])
 
   const handleCloseModal = useCallback(() => {
     setSelectedCreature(null)
@@ -505,9 +654,16 @@ export default function Map() {
         </div>
       )}
 
+      {/* Challenge generation status */}
+      {generatingChallenges && (
+        <div className="absolute top-16 right-4 bg-surface/90 text-white px-4 py-2 rounded-lg shadow-lg z-10">
+          Generating challenges...
+        </div>
+      )}
+
       {/* Spawn generation status */}
       {spawnGenerating && (
-        <div className="absolute top-16 right-4 bg-surface/90 text-white px-4 py-2 rounded-lg shadow-lg z-10">
+        <div className="absolute top-28 right-4 bg-surface/90 text-white px-4 py-2 rounded-lg shadow-lg z-10">
           Generating spawns...
         </div>
       )}
@@ -551,12 +707,34 @@ export default function Map() {
           <button
             onClick={handleManualSpawn}
             disabled={spawnGenerating}
-            className="w-full bg-primary hover:bg-primary/90 text-white text-xs py-1 px-2 rounded transition-colors disabled:opacity-50"
+            className="w-full bg-primary hover:bg-primary/90 text-white text-xs py-1 px-2 rounded transition-colors disabled:opacity-50 mb-2"
           >
             {spawnGenerating ? 'Generating...' : 'Generate Spawns'}
           </button>
+          <button
+            onClick={() => location && generateChallengesForLocation(location.latitude, location.longitude)}
+            disabled={generatingChallenges}
+            className="w-full bg-secondary hover:bg-secondary/90 text-white text-xs py-1 px-2 rounded transition-colors disabled:opacity-50"
+          >
+            {generatingChallenges ? 'Generating Challenges...' : 'Generate Challenges'}
+          </button>
         </div>
       )}
+
+      {/* Challenges Button - Left side of map */}
+      <button
+        className="absolute bottom-32 left-4 bg-primary hover:bg-primary/90 text-white p-3 rounded-full shadow-lg z-10 flex items-center gap-2"
+        onClick={() => setShowChallengePanel(true)}
+        title="View Challenges"
+        aria-label="View nearby challenges"
+      >
+        <Target size={20} />
+        {challenges && challenges.length > 0 && (
+          <span className="bg-red-500 text-white text-xs rounded-full px-2 py-0.5">
+            {challenges.filter(c => !c.completed).length}
+          </span>
+        )}
+      </button>
 
       {/* AI Assistant */}
       {location && (
@@ -574,6 +752,24 @@ export default function Map() {
           creature={selectedCreature}
           userLocation={location}
           onClose={handleCloseModal}
+        />
+      )}
+
+      {/* Challenge Panel */}
+      {showChallengePanel && location && (
+        <ChallengePanel
+          latitude={location.latitude}
+          longitude={location.longitude}
+          selectedChallenge={selectedChallenge}
+          onClose={() => {
+            setShowChallengePanel(false)
+            setSelectedChallenge(null)
+          }}
+          onChallengeAccept={(challenge) => {
+            console.log('Challenge accepted:', challenge)
+            setSelectedChallenge(null)
+            // Refresh challenges - the useChallenges hook will refetch automatically
+          }}
         />
       )}
     </div>

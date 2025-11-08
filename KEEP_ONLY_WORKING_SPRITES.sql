@@ -43,7 +43,53 @@ UPDATE creature_types SET image_url = 'https://pokengine.b-cdn.net/play/images/m
 --                    Maizotaur, Minamai, Ariados, Torkoal, Tormine, Sunnydra, Luvdisc,
 --                    Corsola
 
--- Step 3: Delete catches for creatures NOT in the working list
+-- Step 3: Delete challenges that reference creatures NOT in the working list
+-- First, delete user challenges for challenges that will be deleted
+DELETE FROM user_challenges
+WHERE challenge_id IN (
+  SELECT id FROM challenges
+  WHERE target_creature_type_id IN (
+    SELECT id FROM creature_types
+    WHERE name NOT IN (
+      'Geckrow', 'Hissiorite', 'Pythonova', 'Anu', 'Firomenis', 'Baoby', 'Baobaraffe',
+      'Nuenflu', 'Drashimi', 'Baulder', 'Dreadrock', 'Lavee', 'Lavare',
+      'Crator', 'Efflutal', 'Pilfetch', 'Criminalis', 'Pasturlo', 'Brambull',
+      'Maizotaur', 'Minamai', 'Ariados', 'Torkoal', 'Tormine', 'Sunnydra', 'Luvdisc',
+      'Corsola'
+    )
+  )
+);
+
+-- Delete challenge completions for challenges that will be deleted
+DELETE FROM challenge_completions
+WHERE challenge_id IN (
+  SELECT id FROM challenges
+  WHERE target_creature_type_id IN (
+    SELECT id FROM creature_types
+    WHERE name NOT IN (
+      'Geckrow', 'Hissiorite', 'Pythonova', 'Anu', 'Firomenis', 'Baoby', 'Baobaraffe',
+      'Nuenflu', 'Drashimi', 'Baulder', 'Dreadrock', 'Lavee', 'Lavare',
+      'Crator', 'Efflutal', 'Pilfetch', 'Criminalis', 'Pasturlo', 'Brambull',
+      'Maizotaur', 'Minamai', 'Ariados', 'Torkoal', 'Tormine', 'Sunnydra', 'Luvdisc',
+      'Corsola'
+    )
+  )
+);
+
+-- Delete challenges that reference creatures NOT in the working list
+DELETE FROM challenges
+WHERE target_creature_type_id IN (
+  SELECT id FROM creature_types
+  WHERE name NOT IN (
+    'Geckrow', 'Hissiorite', 'Pythonova', 'Anu', 'Firomenis', 'Baoby', 'Baobaraffe',
+    'Nuenflu', 'Drashimi', 'Baulder', 'Dreadrock', 'Lavee', 'Lavare',
+    'Crator', 'Efflutal', 'Pilfetch', 'Criminalis', 'Pasturlo', 'Brambull',
+    'Maizotaur', 'Minamai', 'Ariados', 'Torkoal', 'Tormine', 'Sunnydra', 'Luvdisc',
+    'Corsola'
+  )
+);
+
+-- Step 4: Delete catches for creatures NOT in the working list
 DELETE FROM catches
 WHERE creature_type_id IN (
   SELECT id FROM creature_types
@@ -56,7 +102,7 @@ WHERE creature_type_id IN (
   )
 );
 
--- Step 4: Delete spawns for creatures NOT in the working list
+-- Step 5: Delete spawns for creatures NOT in the working list
 DELETE FROM spawns
 WHERE creature_type_id IN (
   SELECT id FROM creature_types
@@ -69,7 +115,7 @@ WHERE creature_type_id IN (
   )
 );
 
--- Step 5: Delete creatures NOT in the working list
+-- Step 6: Delete creatures NOT in the working list
 DELETE FROM creature_types
 WHERE name NOT IN (
   'Geckrow', 'Hissiorite', 'Pythonova', 'Anu', 'Firomenis', 'Baoby', 'Baobaraffe',
@@ -79,13 +125,13 @@ WHERE name NOT IN (
   'Corsola'
 );
 
--- Step 6: Verify - should show exactly 27 creatures
+-- Step 7: Verify - should show exactly 27 creatures
 SELECT 
   COUNT(*) as total_creatures,
   COUNT(*) FILTER (WHERE image_url LIKE '%pokengine.b-cdn.net%') as with_sprites
 FROM creature_types;
 
--- Step 7: Show all remaining creatures (should be exactly 27)
+-- Step 8: Show all remaining creatures (should be exactly 27)
 SELECT name, rarity, type, image_url
 FROM creature_types
 ORDER BY 
@@ -98,7 +144,7 @@ ORDER BY
   END,
   name;
 
--- Step 8: Show rarity distribution
+-- Step 9: Show rarity distribution
 SELECT 
   rarity,
   COUNT(*) as count
