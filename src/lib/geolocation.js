@@ -14,7 +14,7 @@ export async function getCurrentLocation() {
     }
 
     const options = {
-      enableHighAccuracy: true,
+      enableHighAccuracy: true, // Required for heading information
       timeout: 10000,
       maximumAge: 0, // Don't use cached position
     }
@@ -25,6 +25,12 @@ export async function getCurrentLocation() {
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
           accuracy: position.coords.accuracy,
+          heading: position.coords.heading !== null && position.coords.heading !== undefined 
+            ? position.coords.heading 
+            : null,
+          speed: position.coords.speed !== null && position.coords.speed !== undefined 
+            ? position.coords.speed 
+            : null,
         })
       },
       (error) => {

@@ -76,34 +76,92 @@ export default function Map() {
     }
   }, [])
 
-  // Update map center when location changes
+  // Create user location arrow marker (reusable function)
+  const createUserLocationMarker = useCallback((heading) => {
+    const el = document.createElement('div')
+    el.className = 'user-location-marker'
+    el.style.width = '32px'
+    el.style.height = '32px'
+    el.style.position = 'relative'
+    el.style.display = 'flex'
+    el.style.alignItems = 'center'
+    el.style.justifyContent = 'center'
+    el.style.filter = 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))'
+    
+    // Create arrow SVG - blue arrow pointing up (North)
+    // Arrow will rotate based on device heading
+    const arrowSVG = `
+      <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" style="transform-origin: 16px 16px;">
+        <!-- Outer circle background with glow -->
+        <circle cx="16" cy="16" r="15" fill="#4ECDC4" stroke="#FFFFFF" stroke-width="2.5" opacity="0.95"/>
+        <!-- Arrow shaft -->
+        <rect x="14" y="8" width="4" height="12" fill="#FFFFFF" rx="1"/>
+        <!-- Arrow head pointing up -->
+        <path d="M 16 4 L 10 12 L 16 10 L 22 12 Z" 
+              fill="#FFFFFF" 
+              stroke="#1A1A2E" 
+              stroke-width="0.3"
+              stroke-linejoin="round"/>
+      </svg>
+    `
+    el.innerHTML = arrowSVG
+    const svgElement = el.querySelector('svg')
+    
+    // Rotate arrow based on heading (heading is in degrees, 0 = North)
+    // Mapbox uses 0 degrees as North, which matches compass heading
+    // Note: Heading is only available on mobile devices when moving
+    // Default to 0 (North) if heading is not available
+    const headingDegrees = heading !== null && heading !== undefined && !isNaN(heading) ? heading : 0
+    svgElement.style.transform = `rotate(${headingDegrees}deg)`
+    svgElement.style.transition = 'transform 0.5s ease-out'
+    
+    return el
+  }, [])
+
+  // Initialize and update user location marker
   useEffect(() => {
     if (!map.current || !mapLoaded || !location) return
 
-    map.current.flyTo({
-      center: [location.longitude, location.latitude],
-      zoom: 16,
-      duration: 1000,
-    })
+    // Create marker if it doesn't exist
+    if (!map.current._userMarker) {
+      const markerElement = createUserLocationMarker(location.heading || 0)
+      map.current._userMarker = new mapboxgl.Marker({
+        element: markerElement,
+        anchor: 'center',
+      })
+        .setLngLat([location.longitude, location.latitude])
+        .addTo(map.current)
+    } else {
+      // Update existing marker position
+      map.current._userMarker.setLngLat([location.longitude, location.latitude])
 
-    // Add user location marker
-    const el = document.createElement('div')
-    el.className = 'user-location-marker'
-    el.style.width = '20px'
-    el.style.height = '20px'
-    el.style.borderRadius = '50%'
-    el.style.backgroundColor = '#4ECDC4'
-    el.style.border = '3px solid #FFFFFF'
-    el.style.boxShadow = '0 0 10px rgba(78, 205, 196, 0.5)'
-
-    // Remove old marker
-    if (map.current._userMarker) {
-      map.current._userMarker.remove()
+      // Update marker rotation based on heading
+      // Default to 0 (North) if heading is not available
+      const headingDegrees = location.heading !== null && location.heading !== undefined && !isNaN(location.heading) 
+        ? location.heading 
+        : 0
+      const markerElement = map.current._userMarker.getElement()
+      const svgElement = markerElement?.querySelector('svg')
+      if (svgElement) {
+        svgElement.style.transform = `rotate(${headingDegrees}deg)`
+      }
     }
 
-    map.current._userMarker = new mapboxgl.Marker(el)
-      .setLngLat([location.longitude, location.latitude])
-      .addTo(map.current)
+    // Update map center (smoothly, but only if location changed significantly)
+    const currentCenter = map.current.getCenter()
+    const distance = Math.sqrt(
+      Math.pow(currentCenter.lng - location.longitude, 2) + 
+      Math.pow(currentCenter.lat - location.latitude, 2)
+    )
+    
+    // Only fly to new location if it's moved significantly (more than 50 meters)
+    if (distance > 0.0005) {
+      map.current.flyTo({
+        center: [location.longitude, location.latitude],
+        zoom: 16,
+        duration: 1000,
+      })
+    }
 
     // Check if in park
     checkParkStatus(location.latitude, location.longitude)
@@ -118,7 +176,7 @@ export default function Map() {
       generateSpawnsForLocation(location.latitude, location.longitude)
       lastSpawnGenRef.current = now
     }
-  }, [location, mapLoaded])
+  }, [location, mapLoaded, createUserLocationMarker])
 
   // Also generate spawns periodically (every 2 minutes)
   useEffect(() => {

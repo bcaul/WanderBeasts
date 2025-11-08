@@ -126,3 +126,15 @@ body {
   animation: pulse-challenge 2s ease-in-out infinite;
 }
 
+/* User location marker styles */
+.user-location-marker {
+  cursor: pointer;
+  z-index: 1000;
+}
+
+.user-location-marker svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
