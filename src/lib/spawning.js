@@ -100,12 +100,17 @@ export async function generateSpawns(latitude, longitude, radiusMeters = 500, in
         // Calculate distance from user to spawn point
         const distanceFromUser = Math.sqrt(offsetMetersLat ** 2 + offsetMetersLon ** 2)
         
-        // Only spawn within 150m of user (to ensure catchability within 100m range)
-        if (distanceFromUser > 150) {
+        // Minimum distance: 25 meters (prevent spawns on/too close to player icon)
+        const MIN_SPAWN_DISTANCE = 25
+        // Maximum distance: 150 meters (to ensure catchability within 100m range)
+        const MAX_SPAWN_DISTANCE = 150
+        
+        // Skip if too close to player or too far away
+        if (distanceFromUser < MIN_SPAWN_DISTANCE || distanceFromUser > MAX_SPAWN_DISTANCE) {
           continue
         }
 
-        // Random spawn chance (25% base chance per cell - increased for testing)
+        // Random spawn chance (25% base chance per cell)
         let spawnChance = 0.25
 
         // Park boost (2-3x multiplier)
@@ -399,9 +404,6 @@ export async function getNearbySpawns(latitude, longitude, radiusMeters = 500) {
         return false
       }
       
-      // Log location format for debugging
-      if (allSpawns.indexOf(spawn) === 0) {
-      }
       
       // Parse PostGIS point string
       const coords = parseLocationString(spawn.location)
@@ -411,12 +413,7 @@ export async function getNearbySpawns(latitude, longitude, radiusMeters = 500) {
       }
       
       const distance = calculateDistance(latitude, longitude, coords.lat, coords.lon)
-      const isNearby = distance <= radiusMeters
-      
-      if (isNearby) {
-      }
-      
-      return isNearby
+      return distance <= radiusMeters
     })
     
 

@@ -9,6 +9,7 @@ ADD COLUMN IF NOT EXISTS points INT DEFAULT 0;
 CREATE INDEX IF NOT EXISTS profiles_points_idx ON profiles(points DESC);
 
 -- Update the update_challenge_progress function to add points to user profile
+-- SECURITY DEFINER allows the function to bypass RLS policies when updating points
 CREATE OR REPLACE FUNCTION update_challenge_progress(
   p_user_id UUID,
   p_challenge_id UUID,
@@ -16,6 +17,8 @@ CREATE OR REPLACE FUNCTION update_challenge_progress(
 )
 RETURNS BOOLEAN
 LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
 AS $$
 DECLARE
   v_challenge challenges%ROWTYPE;
@@ -68,4 +71,7 @@ BEGIN
   RETURN TRUE;
 END;
 $$;
+
+-- Grant execute permission to authenticated users
+GRANT EXECUTE ON FUNCTION update_challenge_progress(UUID, UUID, INT) TO authenticated;
 

@@ -37,7 +37,7 @@ export function useCreatures(latitude, longitude, radiusMeters = 500, refreshInt
     // Initial fetch immediately
     fetchCreatures()
 
-    // Set up interval for refreshing (reduced to 10 seconds for testing)
+    // Set up interval for refreshing
     const intervalId = setInterval(fetchCreatures, refreshInterval)
 
     return () => clearInterval(intervalId)

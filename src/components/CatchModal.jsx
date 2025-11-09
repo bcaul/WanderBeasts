@@ -19,7 +19,7 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
   return R * c // Distance in meters
 }
 
-export default function CatchModal({ creature, userLocation, onClose }) {
+export default function CatchModal({ creature, userLocation, onClose, onCatch, onChallengeUpdate }) {
   const [catching, setCatching] = useState(false)
   const [caught, setCaught] = useState(false)
   const [error, setError] = useState(null)
@@ -156,7 +156,7 @@ export default function CatchModal({ creature, userLocation, onClose }) {
     
     const distance = calculateDistance(userLat, userLon, creatureLat, creatureLon)
     
-    // For testing: allow catching if within 100m (more lenient)
+    // Allow catching if within 100m
     if (distance > 100) {
       setError(`You are too far away! (${distance.toFixed(0)}m away, need to be within 100m)`)
       return
@@ -255,61 +255,85 @@ export default function CatchModal({ creature, userLocation, onClose }) {
 
       // Update collect challenge progress
       try {
-        // Get user's active collect challenges for this creature type
-        const { data: userChallenges } = await supabase
+        // Get ALL user's active collect challenges
+        const { data: allUserChallenges, error: challengesError } = await supabase
           .from('user_challenges')
           .select(`
             *,
-            challenges!inner (id, challenge_type, target_creature_type_id, location, radius_meters)
+            challenges!inner (
+              id, 
+              name,
+              challenge_type, 
+              target_creature_type_id, 
+              location, 
+              radius_meters,
+              target_value
+            )
           `)
           .eq('user_id', user.id)
           .eq('completed', false)
           .eq('challenges.challenge_type', 'collect')
-          .eq('challenges.target_creature_type_id', creatureType.id)
 
-        if (userChallenges && userChallenges.length > 0) {
-          // Check if catch location is within challenge radius
-          for (const userChallenge of userChallenges) {
-            const challenge = userChallenge.challenges
-            if (!challenge || !challenge.location) continue
+        if (challengesError) {
+          console.error('Error fetching user challenges:', challengesError)
+        } else {
+          if (!allUserChallenges || allUserChallenges.length === 0) {
+            // No active challenges - silently continue
+          } else {
+            // Filter challenges: either matches this creature type OR accepts any creature (target_creature_type_id is NULL)
+            const relevantChallenges = allUserChallenges.filter(uc => {
+              const challenge = uc.challenges
+              if (!challenge) return false
+              
+              // Accept if: no specific creature type (any creature) OR matches this creature type
+              return challenge.target_creature_type_id === null || 
+                     challenge.target_creature_type_id === creatureType.id
+            })
 
-            // Parse challenge location
-            const parseLocation = (location) => {
-              if (typeof location === 'object' && location.coordinates) {
-                return { lon: location.coordinates[0], lat: location.coordinates[1] }
-              }
-              const match = typeof location === 'string' ? location.match(/POINT\(([^)]+)\)/) : null
-              if (match) {
-                const coords = match[1].trim().split(/\s+/)
-                if (coords.length >= 2) {
-                  return { lon: parseFloat(coords[0]), lat: parseFloat(coords[1]) }
-                }
-              }
-              return null
-            }
+            // Update ALL relevant challenges (collect challenges update regardless of distance)
+            const updatePromises = []
+            
+            for (const userChallenge of relevantChallenges) {
+              const challenge = userChallenge.challenges
+              if (!challenge) continue
 
-            const challengeCoords = parseLocation(challenge.location)
-            if (!challengeCoords) continue
-
-            // Calculate distance to challenge location
-            const R = 6371e3 // Earth's radius in meters
-            const φ1 = (userLocation.latitude * Math.PI) / 180
-            const φ2 = (challengeCoords.lat * Math.PI) / 180
-            const Δφ = ((challengeCoords.lat - userLocation.latitude) * Math.PI) / 180
-            const Δλ = ((challengeCoords.lon - userLocation.longitude) * Math.PI) / 180
-            const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-              Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2)
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-            const distance = R * c
-
-            // If within challenge radius, update progress
-            if (distance <= challenge.radius_meters) {
-              await supabase.rpc('update_challenge_progress', {
+              // Create update promise
+              const updatePromise = supabase.rpc('update_challenge_progress', {
                 p_user_id: user.id,
                 p_challenge_id: challenge.id,
                 p_progress_increment: 1,
+              }).then(async ({ data: updateResult, error: updateError }) => {
+                if (updateError) {
+                  console.error(`Error updating challenge "${challenge.name}":`, updateError)
+                  return { success: false, challengeId: challenge.id, error: updateError }
+                } else {
+                  if (updateResult === true) {
+                    // Check if challenge was completed
+                    const { data: updatedChallenge } = await supabase
+                      .from('user_challenges')
+                      .select('completed, progress_value')
+                      .eq('user_id', user.id)
+                      .eq('challenge_id', challenge.id)
+                      .single()
+                    
+                    return { success: true, challengeId: challenge.id, completed: updatedChallenge?.completed }
+                  } else if (updateResult === false) {
+                    return { success: false, challengeId: challenge.id, reason: 'update_returned_false' }
+                  } else {
+                    return { success: true, challengeId: challenge.id }
+                  }
+                }
+              }).catch(err => {
+                console.error(`Exception updating challenge:`, err)
+                return { success: false, challengeId: challenge.id, error: err }
               })
-              console.log(`Updated collect challenge ${challenge.id} progress`)
+              
+              updatePromises.push(updatePromise)
+            }
+            
+            // Wait for all updates to complete
+            if (updatePromises.length > 0) {
+              await Promise.all(updatePromises)
             }
           }
         }
@@ -320,10 +344,22 @@ export default function CatchModal({ creature, userLocation, onClose }) {
 
       setCaught(true)
 
-      // Close modal after 2 seconds
+      // Notify parent that creature was caught (so it can be removed from map)
+      if (onCatch && creature.id) {
+        onCatch(creature.id)
+      }
+
+      // Refresh challenges after a delay to ensure database commit
+      setTimeout(() => {
+        if (onChallengeUpdate) {
+          onChallengeUpdate()
+        }
+      }, 1000)
+
+      // Close modal after 2.5 seconds (give time for refresh)
       setTimeout(() => {
         onClose()
-      }, 2000)
+      }, 2500)
     } catch (err) {
       setError(err.message)
       setCatching(false)

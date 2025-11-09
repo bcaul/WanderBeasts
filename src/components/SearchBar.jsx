@@ -147,39 +147,39 @@ export default function SearchBar() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <h1 className="text-3xl font-bold text-primary mb-6">Search</h1>
+    <div className="max-w-4xl mx-auto collection-text">
+      <h1 className="text-3xl font-bold text-white mb-6 collection-card-text">Search</h1>
 
       {/* Search Input */}
       <div className="relative mb-6">
-        <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+        <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white/70" size={20} />
         <input
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search for creatures, gyms, or challenges..."
-          className="w-full pl-12 pr-4 py-4 bg-surface border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
+          className="w-full pl-12 pr-4 py-4 collection-card border-2 border-white/30 rounded-lg text-white placeholder-white/60 collection-card-text focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
         />
       </div>
 
       {/* Search Type Filter */}
-      <div className="flex gap-2 mb-6">
+      <div className="flex gap-2 mb-6 flex-wrap">
         <button
           onClick={() => setSearchType('all')}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+          className={`px-4 py-2 rounded-lg font-medium transition-colors collection-card-text ${
             searchType === 'all'
-              ? 'bg-primary text-white'
-              : 'bg-surface text-gray-300 hover:bg-gray-700'
+              ? 'bg-primary text-white shadow-lg'
+              : 'collection-card text-white hover:bg-opacity-100'
           }`}
         >
           All
         </button>
         <button
           onClick={() => setSearchType('creatures')}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
+          className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 collection-card-text ${
             searchType === 'creatures'
-              ? 'bg-primary text-white'
-              : 'bg-surface text-gray-300 hover:bg-gray-700'
+              ? 'bg-primary text-white shadow-lg'
+              : 'collection-card text-white hover:bg-opacity-100'
           }`}
         >
           <Grid3x3 size={16} />
@@ -187,10 +187,10 @@ export default function SearchBar() {
         </button>
         <button
           onClick={() => setSearchType('gyms')}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
+          className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 collection-card-text ${
             searchType === 'gyms'
-              ? 'bg-primary text-white'
-              : 'bg-surface text-gray-300 hover:bg-gray-700'
+              ? 'bg-primary text-white shadow-lg'
+              : 'collection-card text-white hover:bg-opacity-100'
           }`}
         >
           <MapPin size={16} />
@@ -198,10 +198,10 @@ export default function SearchBar() {
         </button>
         <button
           onClick={() => setSearchType('challenges')}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
+          className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 collection-card-text ${
             searchType === 'challenges'
-              ? 'bg-primary text-white'
-              : 'bg-surface text-gray-300 hover:bg-gray-700'
+              ? 'bg-primary text-white shadow-lg'
+              : 'collection-card text-white hover:bg-opacity-100'
           }`}
         >
           <Target size={16} />
@@ -212,14 +212,14 @@ export default function SearchBar() {
       {/* Results */}
       {loading && (
         <div className="text-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
-          <p className="text-gray-400">Searching...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-2"></div>
+          <p className="text-white collection-card-text">Searching...</p>
         </div>
       )}
 
       {!loading && query.length >= 2 && results.length === 0 && (
         <div className="text-center py-8">
-          <p className="text-gray-400">No results found</p>
+          <p className="text-white collection-card-text">No results found</p>
         </div>
       )}
 
@@ -229,7 +229,7 @@ export default function SearchBar() {
             <button
               key={`${result.type}-${result.id}`}
               onClick={() => handleResultClick(result)}
-              className="w-full bg-surface hover:bg-gray-700 rounded-lg p-4 text-left transition-colors"
+              className="w-full collection-card hover:bg-opacity-100 rounded-lg p-4 text-left transition-colors border-2 border-white/20"
             >
               {result.type === 'creature' ? (
                 <div className="flex items-center gap-4">
@@ -253,8 +253,8 @@ export default function SearchBar() {
                     </span>
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-bold text-white text-lg">{result.name}</h3>
-                    <p className={`text-sm capitalize ${getRarityColor(result.rarity)}`}>
+                    <h3 className="font-bold text-white text-lg collection-card-text">{result.name}</h3>
+                    <p className={`text-sm capitalize collection-card-text ${getRarityColor(result.rarity)}`}>
                       {result.rarity}
                     </p>
                   </div>
@@ -263,9 +263,9 @@ export default function SearchBar() {
                 <div className="flex items-center gap-4">
                   <MapPin className="text-primary" size={24} />
                   <div className="flex-1">
-                    <h3 className="font-bold text-white text-lg">{result.name}</h3>
+                    <h3 className="font-bold text-white text-lg collection-card-text">{result.name}</h3>
                     {result.description && (
-                      <p className="text-gray-400 text-sm">{result.description}</p>
+                      <p className="text-white text-sm collection-card-text">{result.description}</p>
                     )}
                   </div>
                 </div>
@@ -274,29 +274,29 @@ export default function SearchBar() {
                   <Target className={`${result.completed ? 'text-green-400' : result.accepted ? 'text-primary' : 'text-yellow-400'}`} size={24} />
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-bold text-white text-lg">{result.name}</h3>
-                      <span className={`text-xs px-2 py-0.5 rounded ${
-                        result.difficulty === 'easy' ? 'bg-green-500/20 text-green-400' :
-                        result.difficulty === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
-                        result.difficulty === 'hard' ? 'bg-orange-500/20 text-orange-400' :
-                        'bg-red-500/20 text-red-400'
+                      <h3 className="font-bold text-white text-lg collection-card-text">{result.name}</h3>
+                      <span className={`text-xs px-2 py-0.5 rounded collection-card-text ${
+                        result.difficulty === 'easy' ? 'bg-green-500/30 text-green-200' :
+                        result.difficulty === 'medium' ? 'bg-yellow-500/30 text-yellow-200' :
+                        result.difficulty === 'hard' ? 'bg-orange-500/30 text-orange-200' :
+                        'bg-red-500/30 text-red-200'
                       }`}>
                         {result.difficulty}
                       </span>
                       {result.completed && (
-                        <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded">
+                        <span className="text-xs bg-green-500/30 text-green-200 px-2 py-0.5 rounded collection-card-text">
                           Completed
                         </span>
                       )}
                     </div>
-                    <p className="text-gray-400 text-sm">{result.description}</p>
+                    <p className="text-white text-sm collection-card-text">{result.description}</p>
                     {result.accepted && !result.completed && (
                       <div className="mt-2">
-                        <div className="flex items-center justify-between text-xs text-gray-400 mb-1">
+                        <div className="flex items-center justify-between text-xs text-white mb-1 collection-card-text">
                           <span>Progress</span>
                           <span>{result.progress_value || 0} / {result.target_value}</span>
                         </div>
-                        <div className="w-full bg-gray-700 rounded-full h-1.5">
+                        <div className="w-full bg-white/20 rounded-full h-1.5">
                           <div
                             className="bg-primary h-1.5 rounded-full transition-all"
                             style={{
@@ -306,7 +306,7 @@ export default function SearchBar() {
                         </div>
                       </div>
                     )}
-                    <div className="mt-2 flex items-center gap-2 text-xs text-gray-500">
+                    <div className="mt-2 flex items-center gap-2 text-xs text-white collection-card-text">
                       <span>🎯 {result.challenge_type}</span>
                       <span>•</span>
                       <span>🏆 {result.reward_points} pts</span>
@@ -321,8 +321,8 @@ export default function SearchBar() {
 
       {query.length < 2 && (
         <div className="text-center py-12">
-          <Search className="mx-auto text-gray-600 mb-4" size={48} />
-          <p className="text-gray-400">Start typing to search for creatures, gyms, or challenges</p>
+          <Search className="mx-auto text-white/50 mb-4" size={48} />
+          <p className="text-white collection-card-text">Start typing to search for creatures, gyms, or challenges</p>
         </div>
       )}
     </div>

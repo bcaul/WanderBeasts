@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase.js'
-import { LogOut, Trophy, Target, Zap } from 'lucide-react'
+import { LogOut, Trophy, Target, Zap, Star } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 export default function Profile() {
@@ -8,9 +8,42 @@ export default function Profile() {
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
+  const subscriptionRef = useRef(null)
 
   useEffect(() => {
     fetchProfile()
+
+    // Subscribe to profile updates for real-time points updates
+    const setupSubscription = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      subscriptionRef.current = supabase
+        .channel('profile_points')
+        .on('postgres_changes', 
+          { 
+            event: 'UPDATE', 
+            schema: 'public', 
+            table: 'profiles',
+            filter: `id=eq.${user.id}`
+          }, 
+          (payload) => {
+            // Update points when profile is updated
+            if (payload.new.points !== undefined) {
+              setProfile(prev => prev ? ({ ...prev, points: payload.new.points }) : null)
+            }
+          }
+        )
+        .subscribe()
+    }
+
+    setupSubscription()
+
+    return () => {
+      if (subscriptionRef.current) {
+        subscriptionRef.current.unsubscribe()
+      }
+    }
   }, [])
 
   const fetchProfile = async () => {
@@ -114,6 +147,21 @@ export default function Profile() {
               Member since {new Date(profile?.created_at).toLocaleDateString()}
             </p>
           </div>
+        </div>
+      </div>
+
+      {/* Points Display - Prominent */}
+      <div className="bg-gradient-to-r from-primary to-accent rounded-2xl p-6 mb-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <Star className="text-white" size={24} />
+              <p className="text-white/90 text-sm font-medium">Challenge Points</p>
+            </div>
+            <p className="text-5xl font-bold text-white">{profile?.points || 0}</p>
+            <p className="text-white/70 text-xs mt-1">Earned from completing challenges</p>
+          </div>
+          <Trophy className="text-white/20" size={48} />
         </div>
       </div>
 

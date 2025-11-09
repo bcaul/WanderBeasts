@@ -106,15 +106,17 @@ function MapView() {
 
 function CollectionView() {
   return (
-    <div className="flex-1 overflow-y-auto p-4">
-      <Collection />
+    <div className="flex-1 overflow-y-auto retro-green-background" style={{ minHeight: 0, maxHeight: '100%' }}>
+      <div className="p-4 md:p-6 lg:p-8">
+        <Collection />
+      </div>
     </div>
   )
 }
 
 function SearchView() {
   return (
-    <div className="flex-1 overflow-y-auto p-4">
+    <div className="flex-1 overflow-y-auto p-4 retro-green-background">
       <SearchBar />
     </div>
   )

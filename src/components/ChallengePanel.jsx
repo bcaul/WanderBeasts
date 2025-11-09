@@ -4,7 +4,7 @@ import { useChallenges } from '../hooks/useChallenges.js'
 import { X, MapPin, Target, Trophy, TrendingUp } from 'lucide-react'
 
 export default function ChallengePanel({ latitude, longitude, onClose, onChallengeAccept, selectedChallenge: initialSelectedChallenge }) {
-  const { challenges, loading } = useChallenges(latitude, longitude)
+  const { challenges, loading, refetch: refetchChallenges } = useChallenges(latitude, longitude)
   const [selectedChallenge, setSelectedChallenge] = useState(initialSelectedChallenge || null)
   const [accepting, setAccepting] = useState(false)
 
@@ -45,6 +45,13 @@ export default function ChallengePanel({ latitude, longitude, onClose, onChallen
 
       if (onChallengeAccept) {
         onChallengeAccept(challenge)
+      }
+
+      // Refresh challenges to get updated progress
+      if (refetchChallenges) {
+        setTimeout(() => {
+          refetchChallenges()
+        }, 500)
       }
 
       // Update selected challenge to show accepted state

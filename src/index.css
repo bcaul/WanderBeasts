@@ -37,9 +37,11 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #1A1A2E;
+  background-color: #5b695d;
   color: #FFFFFF;
   overflow: hidden;
+  font-size: 16px;
+  line-height: 1.6;
 }
 
 #root {
@@ -81,27 +83,33 @@ body {
 }
 
 .mapboxgl-popup-close-button {
-  color: #1A1A2E;
+  color: #5b695d;
   font-size: 24px;
   padding: 8px;
 }
 
 /* Custom scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 10px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #16213E;
+  background: #6e7864;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #4ECDC4;
-  border-radius: 4px;
+  background: #aabda0;
+  border-radius: 5px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #FF6B6B;
+  background: #7e9278;
+}
+
+/* Ensure scrolling works in flex containers */
+.retro-green-background {
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Animation utilities */
@@ -146,10 +154,10 @@ body {
 /* Challenge marker pulse animation */
 @keyframes pulse-challenge {
   0%, 100% {
-    box-shadow: 0 4px 12px rgba(0,0,0,0.5), 0 0 0 0 rgba(99, 102, 241, 0.7);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5), 0 0 0 0 rgba(126, 146, 120, 0.7);
   }
   50% {
-    box-shadow: 0 4px 12px rgba(0,0,0,0.5), 0 0 0 8px rgba(99, 102, 241, 0);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5), 0 0 0 8px rgba(126, 146, 120, 0);
   }
 }
 
@@ -203,4 +211,122 @@ body {
   display: block;
   width: 100%;
   height: 100%;
+}
+
+/* Soft, pleasant solid background for Collection and Search */
+.retro-green-background {
+  background: #6e7864;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Legacy class name for backwards compatibility */
+.collection-background {
+  background: #6e7864;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Ensure text in collection has good contrast */
+.collection-text {
+  position: relative;
+  z-index: 1;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7), 0 0 4px rgba(0, 0, 0, 0.5);
+}
+
+.collection-card {
+  background: rgba(91, 105, 93, 0.65) !important;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.2s ease;
+}
+
+.collection-card-text {
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  color: #ffffff !important;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+/* Better typography for collection page */
+.collection-text h1,
+.collection-text h2,
+.collection-text h3 {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.collection-text p,
+.collection-text span,
+.collection-text label {
+  font-weight: 500;
+}
+
+/* Rarity border colors - thicker borders */
+.collection-card.border-blue-400 {
+  border-width: 3px !important;
+  border-color: #60a5fa !important;
+  box-shadow: 0 0 10px rgba(96, 165, 250, 0.4), 0 4px 24px rgba(0, 0, 0, 0.3);
+}
+
+.collection-card.border-green-400 {
+  border-width: 3px !important;
+  border-color: #4ade80 !important;
+  box-shadow: 0 0 10px rgba(74, 222, 128, 0.4), 0 4px 24px rgba(0, 0, 0, 0.3);
+}
+
+.collection-card.border-purple-400 {
+  border-width: 3px !important;
+  border-color: #a78bfa !important;
+  box-shadow: 0 0 10px rgba(167, 139, 250, 0.4), 0 4px 24px rgba(0, 0, 0, 0.3);
+}
+
+.collection-card.border-orange-400 {
+  border-width: 3px !important;
+  border-color: #fb923c !important;
+  box-shadow: 0 0 10px rgba(251, 146, 60, 0.4), 0 4px 24px rgba(0, 0, 0, 0.3);
+}
+
+/* Rainbow chroma border for legendary - background stays the same as collection-card */
+.legendary-card {
+  position: relative;
+  border: none !important;
+}
+
+/* Rainbow border ring behind the card */
+.legendary-card::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 0.875rem;
+  background: conic-gradient(
+    from 0deg,
+    #ff0000,
+    #ff7f00,
+    #ffff00,
+    #00ff00,
+    #0000ff,
+    #4b0082,
+    #9400d3,
+    #ff0000
+  );
+  z-index: 0;
+}
+
+/* Cover the center to show only the border */
+.legendary-card::after {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border-radius: calc(0.875rem - 4px);
+  background: inherit;
+  backdrop-filter: inherit;
+  box-shadow: inherit;
+  z-index: 1;
+}
+
+.legendary-card > div {
+  position: relative;
+  z-index: 2;
 }

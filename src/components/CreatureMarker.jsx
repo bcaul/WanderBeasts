@@ -4,11 +4,11 @@
 export default function CreatureMarker({ creature, onClick }) {
   const getRarityColor = (rarity) => {
     const colors = {
-      common: '#4ECDC4',
-      uncommon: '#FFE66D',
-      rare: '#A569BD',
-      epic: '#FF6B6B',
-      legendary: '#F39C12',
+      common: '#aabda0',
+      uncommon: '#beccc0',
+      rare: '#7e9278',
+      epic: '#6e7864',
+      legendary: '#8b7355',
     }
     return colors[rarity] || colors.common
   }
