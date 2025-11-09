@@ -1,0 +1,25 @@
+{
+  "name": "WanderBeasts",
+  "short_name": "WanderBeasts",
+  "description": "Location-based creature collecting game",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#5b695d",
+  "theme_color": "#7e9278",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/WanderBeasts-removebg-preview.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/WanderBeasts-removebg-preview.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
+

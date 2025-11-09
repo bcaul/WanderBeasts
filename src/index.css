@@ -1,0 +1,332 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Force pixel-perfect rendering for Pokengine creature sprites */
+/* This applies to ALL images from pokengine.b-cdn.net */
+img[src*="pokengine.b-cdn.net"] {
+  /* Use pixelated for pixel art - forces nearest-neighbor scaling */
+  /* This ensures sprites remain sharp when scaled */
+  image-rendering: pixelated;
+  /* Fallback for browsers that don't support pixelated */
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+  /* Prevent blur from hardware acceleration */
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  /* Prevent blur from interpolation (IE/Edge legacy) */
+  -ms-interpolation-mode: nearest-neighbor;
+  /* Ensure images are rendered without smoothing */
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #5b695d;
+  color: #FFFFFF;
+  overflow: hidden;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+#root {
+  width: 100vw;
+  height: 100vh;
+}
+
+/* Mapbox GL overrides - Ensure map renders correctly */
+.mapboxgl-map {
+  width: 100% !important;
+  height: 100% !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+}
+
+.mapboxgl-canvas-container {
+  width: 100% !important;
+  height: 100% !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+}
+
+.mapboxgl-canvas {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  display: block !important;
+}
+
+.mapboxgl-popup-content {
+  border-radius: 12px;
+  padding: 0;
+}
+
+.mapboxgl-popup-close-button {
+  color: #5b695d;
+  font-size: 24px;
+  padding: 8px;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #6e7864;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #aabda0;
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #7e9278;
+}
+
+/* Ensure scrolling works in flex containers */
+.retro-green-background {
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Animation utilities */
+@keyframes bounce-in {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-bounce-in {
+  animation: bounce-in 0.3s ease-out;
+}
+
+/* Catch celebration animation */
+@keyframes catch-celebration {
+  0% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.5) rotate(180deg);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1) rotate(360deg);
+    opacity: 1;
+  }
+}
+
+.catch-celebration {
+  animation: catch-celebration 0.6s ease-in-out;
+}
+
+/* Challenge marker pulse animation */
+@keyframes pulse-challenge {
+  0%, 100% {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5), 0 0 0 0 rgba(126, 146, 120, 0.7);
+  }
+  50% {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5), 0 0 0 8px rgba(126, 146, 120, 0);
+  }
+}
+
+.pulse-challenge {
+  animation: pulse-challenge 2s ease-in-out infinite;
+}
+
+/* Gym marker pulse animation (for active gyms with 5+ players) - BRIGHT BLUE */
+@keyframes pulse-gym {
+  0%, 100% {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5), 0 0 0 0 rgba(243, 156, 18, 0.7);
+  }
+  50% {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5), 0 0 0 10px rgba(243, 156, 18, 0);
+  }
+}
+
+.pulse-gym {
+  animation: pulse-gym 2s ease-in-out infinite;
+}
+
+/* Gym marker - EXACTLY like creature markers to avoid positioning issues */
+/* Mapbox creates a wrapper div and applies CSS transforms to position it */
+/* Our element is a child - it should have NO positioning properties */
+/* This ensures markers stay stationary when zooming */
+.gym-marker {
+  width: 44px;
+  height: 44px;
+  cursor: pointer;
+  pointer-events: auto;
+  box-sizing: border-box;
+  /* CRITICAL: NO position property - Mapbox wrapper handles all positioning */
+  /* CRITICAL: NO transform property - Mapbox applies transform to wrapper */
+  /* CRITICAL: NO margin or padding that could affect positioning */
+}
+
+/* RSVP badge marker - separate marker positioned by Mapbox */
+/* This avoids positioning issues since it's a separate marker, not positioned relative to gym marker */
+.gym-rsvp-badge-marker {
+  /* No specific styles needed - all styles are inline */
+  /* Mapbox handles positioning, so this marker stays stationary when zooming */
+}
+
+/* User location marker styles */
+.user-location-marker {
+  cursor: pointer;
+  z-index: 1000;
+}
+
+.user-location-marker svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Soft, pleasant solid background for Collection and Search */
+.retro-green-background {
+  background: #6e7864;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Legacy class name for backwards compatibility */
+.collection-background {
+  background: #6e7864;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Ensure text in collection has good contrast */
+.collection-text {
+  position: relative;
+  z-index: 1;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7), 0 0 4px rgba(0, 0, 0, 0.5);
+}
+
+.collection-card {
+  background: rgba(91, 105, 93, 0.65) !important;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.2s ease;
+}
+
+.collection-card-text {
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  color: #ffffff !important;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+/* Better typography for collection page */
+.collection-text h1,
+.collection-text h2,
+.collection-text h3 {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.collection-text p,
+.collection-text span,
+.collection-text label {
+  font-weight: 500;
+}
+
+/* Rarity border colors - thicker borders */
+.collection-card.border-blue-400 {
+  border-width: 3px !important;
+  border-color: #60a5fa !important;
+  box-shadow: 0 0 10px rgba(96, 165, 250, 0.4), 0 4px 24px rgba(0, 0, 0, 0.3);
+}
+
+.collection-card.border-green-400 {
+  border-width: 3px !important;
+  border-color: #4ade80 !important;
+  box-shadow: 0 0 10px rgba(74, 222, 128, 0.4), 0 4px 24px rgba(0, 0, 0, 0.3);
+}
+
+.collection-card.border-purple-400 {
+  border-width: 3px !important;
+  border-color: #a78bfa !important;
+  box-shadow: 0 0 10px rgba(167, 139, 250, 0.4), 0 4px 24px rgba(0, 0, 0, 0.3);
+}
+
+.collection-card.border-orange-400 {
+  border-width: 3px !important;
+  border-color: #fb923c !important;
+  box-shadow: 0 0 10px rgba(251, 146, 60, 0.4), 0 4px 24px rgba(0, 0, 0, 0.3);
+}
+
+/* Rainbow chroma border for legendary - background stays the same as collection-card */
+.legendary-card {
+  position: relative;
+  border: none !important;
+}
+
+/* Rainbow border ring behind the card */
+.legendary-card::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 0.875rem;
+  background: conic-gradient(
+    from 0deg,
+    #ff0000,
+    #ff7f00,
+    #ffff00,
+    #00ff00,
+    #0000ff,
+    #4b0082,
+    #9400d3,
+    #ff0000
+  );
+  z-index: 0;
+}
+
+/* Cover the center to show only the border */
+.legendary-card::after {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border-radius: calc(0.875rem - 4px);
+  background: inherit;
+  backdrop-filter: inherit;
+  box-shadow: inherit;
+  z-index: 1;
+}
+
+.legendary-card > div {
+  position: relative;
+  z-index: 2;
+}
