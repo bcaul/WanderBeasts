@@ -1,7 +1,7 @@
 # WanderBeasts - Location-Based Creature Collecting Game
 
 <div align="center">
-  <img src="WanderBeastsOne .png" alt="WanderBeasts Logo" width="200"/>
+  <img src="public/WanderBeastsOne .png" alt="WanderBeasts Logo" width="200"/>
 </div>
 
 A Pokemon GO-style progressive web app where users catch travel-themed creatures in real-world locations.
