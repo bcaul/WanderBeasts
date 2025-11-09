@@ -121,7 +121,6 @@ export async function getNearbyParks(latitude, longitude, radiusMeters = 2000) {
  * Cache for park checks (to avoid excessive API calls)
  */
 const parkCache = new Map()
-const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
 
 /**
  * Check if in park with caching
@@ -130,15 +129,31 @@ const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
  * @returns {Promise<{inPark: boolean, parkName?: string}>}
  */
 export async function checkIfInParkCached(latitude, longitude) {
-  // Round coordinates to ~100m precision for caching
-  const cacheKey = `${Math.round(latitude * 1000) / 1000}_${Math.round(longitude * 1000) / 1000}`
+  // Use more precise coordinates for cache key (6 decimal places = ~0.1m precision)
+  // This ensures cache is location-specific and prevents false positives
+  const cacheKey = `${latitude.toFixed(6)}_${longitude.toFixed(6)}`
   const cached = parkCache.get(cacheKey)
 
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+  // Reduce cache TTL to 10 seconds to prevent stale location data
+  // This ensures if user moves, they get updated park status quickly
+  if (cached && Date.now() - cached.timestamp < 10000) {
     return cached.result
   }
 
-  const result = await checkIfInPark(latitude, longitude)
+  // Clear old cache entries periodically to prevent memory leaks
+  if (parkCache.size > 100) {
+    const now = Date.now()
+    for (const [key, value] of parkCache.entries()) {
+      if (now - value.timestamp > 60000) { // Remove entries older than 1 minute
+        parkCache.delete(key)
+      }
+    }
+  }
+
+  // Use VERY small radius (15m) to only detect parks you're actually IN
+  // This prevents false positives when you're near but not in a park
+  // Previous radius of 50m was too large and caused incorrect park detection
+  const result = await checkIfInPark(latitude, longitude, 15)
   parkCache.set(cacheKey, {
     result,
     timestamp: Date.now(),

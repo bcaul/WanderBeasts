@@ -16,13 +16,25 @@ export async function getCountryCode(latitude, longitude) {
     return null
   }
 
+  // Validate coordinates before making API call
+  if (typeof latitude !== 'number' || typeof longitude !== 'number' || 
+      isNaN(latitude) || isNaN(longitude) ||
+      latitude < -90 || latitude > 90 ||
+      longitude < -180 || longitude > 180) {
+    console.warn('Invalid coordinates for country code lookup:', { latitude, longitude })
+    return null
+  }
+
   try {
     const response = await fetch(
       `https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json?access_token=${MAPBOX_ACCESS_TOKEN}&types=country&limit=1`
     )
 
     if (!response.ok) {
-      throw new Error(`Geocoding API error: ${response.status}`)
+      const errorText = await response.text().catch(() => 'Unknown error')
+      console.error(`Geocoding API error: ${response.status}`, errorText)
+      // Return null instead of throwing to prevent app crashes
+      return null
     }
 
     const data = await response.json()
@@ -52,34 +64,59 @@ export async function getLocationDetails(latitude, longitude) {
     return {}
   }
 
+  // Validate coordinates before making API call
+  if (typeof latitude !== 'number' || typeof longitude !== 'number' || 
+      isNaN(latitude) || isNaN(longitude) ||
+      latitude < -90 || latitude > 90 ||
+      longitude < -180 || longitude > 180) {
+    console.warn('Invalid coordinates for geocoding:', { latitude, longitude })
+    return {}
+  }
+
   try {
-    const response = await fetch(
-      `https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json?access_token=${MAPBOX_ACCESS_TOKEN}&types=place,country&limit=5`
-    )
-
-    if (!response.ok) {
-      throw new Error(`Geocoding API error: ${response.status}`)
-    }
-
-    const data = await response.json()
-    const features = data.features || []
+    // Mapbox requires separate calls when using limit with multiple types
+    // Make two calls: one for place, one for country
+    const [placeResponse, countryResponse] = await Promise.all([
+      fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json?access_token=${MAPBOX_ACCESS_TOKEN}&types=place&limit=1`
+      ),
+      fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json?access_token=${MAPBOX_ACCESS_TOKEN}&types=country&limit=1`
+      )
+    ])
 
     let city = null
     let country = null
     let countryCode = null
 
-    for (const feature of features) {
-      const placeType = feature.place_type?.[0]
-      const properties = feature.properties || {}
-
-      if (placeType === 'place' && !city) {
-        city = properties.name || feature.text
+    // Parse place response
+    if (placeResponse.ok) {
+      const placeData = await placeResponse.json()
+      const placeFeatures = placeData.features || []
+      if (placeFeatures.length > 0) {
+        const properties = placeFeatures[0].properties || {}
+        city = properties.name || placeFeatures[0].text
       }
+    } else {
+      const errorText = await placeResponse.text().catch(() => 'Unknown error')
+      if (import.meta.env.DEV) {
+        console.warn(`Geocoding API error (place): ${placeResponse.status}`, errorText)
+      }
+    }
 
-      if (placeType === 'country') {
-        country = properties.name || feature.text
+    // Parse country response
+    if (countryResponse.ok) {
+      const countryData = await countryResponse.json()
+      const countryFeatures = countryData.features || []
+      if (countryFeatures.length > 0) {
+        const properties = countryFeatures[0].properties || {}
+        country = properties.name || countryFeatures[0].text
         countryCode = properties.short_code?.toUpperCase()
-        break
+      }
+    } else {
+      const errorText = await countryResponse.text().catch(() => 'Unknown error')
+      if (import.meta.env.DEV) {
+        console.warn(`Geocoding API error (country): ${countryResponse.status}`, errorText)
       }
     }
 
@@ -89,7 +126,9 @@ export async function getLocationDetails(latitude, longitude) {
       countryCode: countryCode || null,
     }
   } catch (error) {
-    console.error('Error getting location details:', error)
+    if (import.meta.env.DEV) {
+      console.error('Error getting location details:', error)
+    }
     return {}
   }
 }

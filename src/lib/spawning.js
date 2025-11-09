@@ -79,56 +79,42 @@ export async function generateSpawns(latitude, longitude, radiusMeters = 500, in
 
     // Generate spawns in a smaller radius around user (200m instead of 500m)
     // This ensures spawns are close enough to catch (within 100m catch range)
-    const spawnRadius = Math.min(radiusMeters, 200) // Cap at 200m for better catchability
-    const gridSpacing = 50 // Smaller spacing for more spawns closer to user
-    const gridSize = Math.ceil((spawnRadius * 2) / gridSpacing)
+    // Spawn exactly 3-4 Pokemon (Pokemon Go style - smaller groups)
+    const MIN_SPAWNS = 3
+    const MAX_SPAWNS = 4
+    const spawnCount = MIN_SPAWNS + Math.floor(Math.random() * (MAX_SPAWNS - MIN_SPAWNS + 1))
     const spawns = []
 
-    for (let i = 0; i < gridSize; i++) {
-      for (let j = 0; j < gridSize; j++) {
-        // Calculate grid point offset (in meters, then convert to degrees)
-        const offsetMetersLat = (i - gridSize / 2) * gridSpacing
-        const offsetMetersLon = (j - gridSize / 2) * gridSpacing
-        
-        // Convert meters to degrees (approximately)
-        const offsetLat = offsetMetersLat / 111320 // ~111km per degree latitude
-        const offsetLon = offsetMetersLon / (111320 * Math.cos(latitude * Math.PI / 180))
+    const MIN_SPAWN_DISTANCE = 25 // Minimum distance from player (meters)
+    const MAX_SPAWN_DISTANCE = 120 // Maximum distance from player (meters)
 
-        const spawnLat = latitude + offsetLat
-        const spawnLon = longitude + offsetLon
+    // Generate spawn locations in a circle around the player
+    for (let i = 0; i < spawnCount; i++) {
+      // Random angle around the player
+      const angle = (Math.PI * 2 * i) / spawnCount + (Math.random() - 0.5) * 0.5 // Distribute evenly with some randomness
 
-        // Calculate distance from user to spawn point
-        const distanceFromUser = Math.sqrt(offsetMetersLat ** 2 + offsetMetersLon ** 2)
-        
-        // Minimum distance: 25 meters (prevent spawns on/too close to player icon)
-        const MIN_SPAWN_DISTANCE = 25
-        // Maximum distance: 150 meters (to ensure catchability within 100m range)
-        const MAX_SPAWN_DISTANCE = 150
-        
-        // Skip if too close to player or too far away
-        if (distanceFromUser < MIN_SPAWN_DISTANCE || distanceFromUser > MAX_SPAWN_DISTANCE) {
-          continue
-        }
+      // Random distance between min and max
+      const distance = MIN_SPAWN_DISTANCE + Math.random() * (MAX_SPAWN_DISTANCE - MIN_SPAWN_DISTANCE)
 
-        // Random spawn chance (25% base chance per cell)
-        let spawnChance = 0.25
+      // Calculate offset in meters
+      const offsetMetersLat = distance * Math.cos(angle)
+      const offsetMetersLon = distance * Math.sin(angle)
 
-        // Park boost (2-3x multiplier)
-        if (inPark) {
-          spawnChance *= 2.5
-        }
+      // Convert meters to degrees
+      const offsetLat = offsetMetersLat / 111320 // ~111km per degree latitude
+      const offsetLon = offsetMetersLon / (111320 * Math.cos(latitude * Math.PI / 180))
 
-        if (Math.random() < spawnChance) {
-          // Select creature type based on rarity
-          const creature = selectCreatureByRarity(creatureTypes, inPark)
-          if (creature) {
-            spawns.push({
-              creature_type_id: creature.id,
-              location: `POINT(${spawnLon} ${spawnLat})`,
-              in_park: inPark,
-            })
-          }
-        }
+      const spawnLat = latitude + offsetLat
+      const spawnLon = longitude + offsetLon
+
+      // Select creature type based on rarity
+      const creature = selectCreatureByRarity(creatureTypes, inPark)
+      if (creature) {
+        spawns.push({
+          creature_type_id: creature.id,
+          location: `POINT(${spawnLon} ${spawnLat})`,
+          in_park: inPark,
+        })
       }
     }
     

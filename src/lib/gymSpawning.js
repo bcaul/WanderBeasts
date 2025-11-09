@@ -92,13 +92,26 @@ export async function checkAndSpawnGymCreatures() {
     const { data, error } = await supabase.rpc('check_and_spawn_gym_creatures')
 
     if (error) {
-      console.error('Error checking and spawning gym creatures:', error)
+      // Only log detailed errors in development to reduce console noise
+      if (import.meta.env.DEV) {
+        console.error('Error checking and spawning gym creatures:', error)
+        console.error('Error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        })
+      }
+      // Silently fail in production - this is not critical functionality
       return []
     }
 
     return data || []
   } catch (error) {
-    console.error('Failed to check and spawn gym creatures:', error)
+    // Only log in development
+    if (import.meta.env.DEV) {
+      console.error('Failed to check and spawn gym creatures:', error)
+    }
     return []
   }
 }

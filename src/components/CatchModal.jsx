@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase.js'
-import { getCreatureSprite } from '../lib/creatureSprites.js'
+import { getCreatureSprite, getCreatureEmoji } from '../lib/creatureSprites.js'
 import { sendVoucherEmail } from '../lib/email.js'
 import { X, Users, Lock } from 'lucide-react'
+import CatchAnimation from './CatchAnimation.jsx'
 
 // Calculate distance between two points using Haversine formula
 function calculateDistance(lat1, lon1, lat2, lon2) {
@@ -27,6 +28,16 @@ export default function CatchModal({ creature, userLocation, onClose, onCatch, o
   const [isGymCreature, setIsGymCreature] = useState(false)
   const [playerCount, setPlayerCount] = useState(0)
   const [loadingPlayerCount, setLoadingPlayerCount] = useState(false)
+  const [animationKey, setAnimationKey] = useState(0)
+  const [spriteAnimating, setSpriteAnimating] = useState(false)
+
+  // Update animation key when caught becomes true to force remount and trigger animation
+  useEffect(() => {
+    if (caught) {
+      // Update key to force component remount which triggers animation
+      setAnimationKey(prev => prev + 1)
+    }
+  }, [caught])
 
   if (!creature || !creature.creature_types) {
     return null
@@ -142,6 +153,10 @@ export default function CatchModal({ creature, userLocation, onClose, onCatch, o
       return
     }
 
+    // Trigger sprite animation
+    setSpriteAnimating(true)
+    setTimeout(() => setSpriteAnimating(false), 500) // Reset after animation
+
     // Check if within range (50 meters)
     // Make sure coordinates are valid numbers
     const userLat = parseFloat(userLocation.latitude)
@@ -227,8 +242,8 @@ export default function CatchModal({ creature, userLocation, onClose, onCatch, o
         }
       }
 
-      // Generate random CP level (1-100)
-      const cpLevel = Math.floor(Math.random() * 100) + 1
+      // Generate random CP level (1-3000)
+      const cpLevel = Math.floor(Math.random() * 3000) + 1
 
       // Add to catches
       const { error: catchError } = await supabase.from('catches').insert({
@@ -251,7 +266,11 @@ export default function CatchModal({ creature, userLocation, onClose, onCatch, o
       await supabase.from('spawns').delete().eq('id', creature.id)
 
       // Update user stats
-      await supabase.rpc('increment_catches', { user_id: user.id })
+      const { error: incrementError } = await supabase.rpc('increment_catches', { user_id: user.id })
+      if (incrementError) {
+        console.error('Error incrementing catch stats:', incrementError)
+        // Don't fail the catch if stats update fails - it's not critical
+      }
 
       // Update collect challenge progress
       try {
@@ -390,7 +409,9 @@ export default function CatchModal({ creature, userLocation, onClose, onCatch, o
         // Don't fail the catch if challenge update fails
       }
 
+      // Set caught state and update animation key immediately to trigger animation
       setCaught(true)
+      setAnimationKey(Date.now()) // Force new key for animation remount
 
       // Notify parent that creature was caught (so it can be removed from map)
       if (onCatch && creature.id) {
@@ -404,10 +425,10 @@ export default function CatchModal({ creature, userLocation, onClose, onCatch, o
         }
       }, 1000)
 
-      // Close modal after 2.5 seconds (give time for refresh)
+      // Close modal after 3 seconds (give time for animation to play)
       setTimeout(() => {
         onClose()
-      }, 2500)
+      }, 3000)
     } catch (err) {
       setError(err.message)
       setCatching(false)
@@ -466,33 +487,19 @@ export default function CatchModal({ creature, userLocation, onClose, onCatch, o
 
         {caught ? (
           <div className="text-center py-8">
-            <div className="mb-4 animate-catch flex justify-center">
-              {getCreatureSprite(creatureType) ? (
-                <img 
-                  src={getCreatureSprite(creatureType)} 
-                  alt={creatureType.name}
-                  className="w-32 h-32 object-contain"
-                  referrerPolicy="no-referrer"
-                  onError={(e) => {
-                    e.target.style.display = 'none'
-                    e.target.nextSibling.style.display = 'block'
-                  }}
-                />
-              ) : null}
-              <div className="text-8xl" style={{ display: getCreatureSprite(creatureType) ? 'none' : 'block' }}>
-                {getCreatureEmoji(creatureType.name)}
-              </div>
+            <div className="mb-4 flex justify-center items-center" style={{ minHeight: '128px', overflow: 'visible' }}>
+              <CatchAnimation key={`catch-${animationKey}`} creatureType={creatureType} />
             </div>
-            <h2 className="text-3xl font-bold text-primary mb-2">Gotcha!</h2>
+            <h2 className="text-3xl font-bold text-primary mb-2 animate-pulse" style={{ textShadow: '0 0 10px rgba(255, 193, 7, 0.8)' }}>Gotcha!</h2>
             <p className="text-xl text-gray-300 mb-4">
-              You caught {creatureType.name}!
+              You caught <span className="font-bold text-primary">{creatureType.name}</span>!
             </p>
             <p className="text-gray-400">Adding to your collection...</p>
           </div>
         ) : (
           <>
             <div className="text-center mb-6">
-              <div className="mb-4 flex justify-center">
+              <div className={`mb-4 flex justify-center ${spriteAnimating ? 'catch-sprite-bounce' : ''}`}>
                 {getCreatureSprite(creatureType) ? (
                   <img 
                     src={getCreatureSprite(creatureType)} 

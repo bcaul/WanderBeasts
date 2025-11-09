@@ -43,7 +43,9 @@ export async function getHuntingRecommendations(context) {
       return getDefaultRecommendations(context)
     }
 
-    const model = client.getGenerativeModel({ model: 'gemini-pro' })
+    // Use gemini-1.5-flash as it's faster and free, or gemini-1.5-pro for better quality
+    // gemini-pro is deprecated, use gemini-1.5-flash or gemini-1.5-pro
+    const model = client.getGenerativeModel({ model: 'gemini-1.5-flash' })
 
     const prompt = `You are a helpful guide for a creature-hunting game similar to Pokemon GO.
 

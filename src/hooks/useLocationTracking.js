@@ -18,6 +18,12 @@ export function useLocationTracking(location) {
       return
     }
 
+    const now = Date.now()
+    const currentAccuracy = location.accuracy || 100 // Default to 100m if accuracy not available
+    const timeSinceLastUpdate = lastLocationRef.current
+      ? now - lastLocationRef.current.timestamp
+      : 0
+
     // Calculate distance from last location
     if (lastLocationRef.current) {
       const distance = calculateDistance(
@@ -27,20 +33,35 @@ export function useLocationTracking(location) {
         location.longitude
       )
 
-      // Only count significant movement (filter out GPS jitter)
-      // Minimum 3 meters to count as movement (reduced for better tracking)
-      // Maximum 500 meters to filter out unrealistic GPS jumps
-      if (distance >= 3 && distance < 500) {
+      // Adaptive jump detection based on accuracy and time
+      // If accuracy is good (< 50m) and distance is reasonable, accept it
+      // If a long time has passed (> 60s), larger jumps might be legitimate
+      // Use accuracy to determine reasonable jump threshold
+      const accuracyThreshold = Math.max(currentAccuracy * 3, 50) // At least 50m, or 3x accuracy
+      const timeBasedThreshold = timeSinceLastUpdate > 60000 ? 2000 : 1000 // 2km if > 60s, else 1km
+      const jumpThreshold = Math.min(accuracyThreshold, timeBasedThreshold)
+
+      // Only count movement for distance tracking if it's reasonable
+      // Minimum 3 meters to count as movement (filter GPS jitter)
+      if (distance >= 3 && distance < jumpThreshold) {
         distanceTraveledRef.current += distance
-      } else if (distance >= 500) {
-        console.warn(`GPS jump detected: ${distance.toFixed(2)}m - ignoring`)
+      } else if (distance >= jumpThreshold) {
+        // Log but don't prevent location update - location should still update on map
+        // This might be a legitimate jump (GPS lock, network change, etc.)
+        // Only warn in development to reduce console noise
+        if (import.meta.env.DEV) {
+          console.warn(`GPS jump detected: ${distance.toFixed(2)}m (threshold: ${jumpThreshold.toFixed(2)}m, accuracy: ${currentAccuracy?.toFixed(2)}m) - not counting for distance tracking but updating location`)
+        }
       }
     }
 
+    // Always update location reference so map shows current position
+    // Even if we don't count it for distance tracking
     lastLocationRef.current = {
       latitude: location.latitude,
       longitude: location.longitude,
-      timestamp: Date.now(),
+      timestamp: now,
+      accuracy: currentAccuracy,
     }
 
     // Update walking challenges periodically

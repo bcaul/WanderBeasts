@@ -9,7 +9,8 @@ export default function Collection() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [filter, setFilter] = useState('all') // all, common, uncommon, rare, epic, legendary
-  const [sortBy, setSortBy] = useState('date') // date, cp, name
+  const [sortBy, setSortBy] = useState('date') // date, cp, name, rarity
+  const [sortOrder, setSortOrder] = useState('desc') // asc, desc
   const subscriptionRef = useRef(null)
 
   useEffect(() => {
@@ -111,6 +112,15 @@ export default function Collection() {
     return acc
   }, {})
 
+  // Rarity order for sorting
+  const rarityOrder = {
+    common: 1,
+    uncommon: 2,
+    rare: 3,
+    epic: 4,
+    legendary: 5
+  }
+
   // Filter and sort
   let filteredCatches = Object.values(groupedCatches)
 
@@ -120,16 +130,31 @@ export default function Collection() {
     )
   }
 
+  // Apply sorting
   if (sortBy === 'cp') {
-    filteredCatches.sort((a, b) => b.highestCP - a.highestCP)
+    filteredCatches.sort((a, b) => {
+      const result = b.highestCP - a.highestCP
+      return sortOrder === 'asc' ? -result : result
+    })
   } else if (sortBy === 'name') {
-    filteredCatches.sort((a, b) => a.creature.name.localeCompare(b.creature.name))
+    filteredCatches.sort((a, b) => {
+      const result = a.creature.name.localeCompare(b.creature.name)
+      return sortOrder === 'asc' ? result : -result
+    })
+  } else if (sortBy === 'rarity') {
+    filteredCatches.sort((a, b) => {
+      const aRarity = rarityOrder[a.creature.rarity] || 0
+      const bRarity = rarityOrder[b.creature.rarity] || 0
+      const result = bRarity - aRarity
+      return sortOrder === 'asc' ? -result : result
+    })
   } else {
-    // Sort by most recent catch
+    // Sort by most recent catch (date)
     filteredCatches.sort((a, b) => {
       const aDate = new Date(a.catches[0].caught_at)
       const bDate = new Date(b.catches[0].caught_at)
-      return bDate - aDate
+      const result = bDate - aDate
+      return sortOrder === 'asc' ? -result : result
     })
   }
 
@@ -216,7 +241,7 @@ export default function Collection() {
         <div className="collection-card rounded-xl p-6 transition-transform hover:scale-105">
           <p className="text-white/75 text-xs md:text-sm uppercase tracking-wider mb-3 collection-card-text font-semibold">Completion</p>
           <p className="text-4xl md:text-5xl font-bold text-white collection-card-text leading-tight">
-            {filteredCatches.length}/50
+            {filteredCatches.length}/75
           </p>
         </div>
       </div>
@@ -253,7 +278,7 @@ export default function Collection() {
           </div>
 
           {/* Sort */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <label className="text-white/80 text-base md:text-lg collection-card-text font-semibold">Sort by:</label>
             <select
               value={sortBy}
@@ -263,6 +288,15 @@ export default function Collection() {
               <option value="date" className="bg-surface">Date Caught</option>
               <option value="cp" className="bg-surface">CP Level</option>
               <option value="name" className="bg-surface">Name</option>
+              <option value="rarity" className="bg-surface">Rarity</option>
+            </select>
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value)}
+              className="collection-card border-2 border-white/30 rounded-lg px-5 py-2.5 text-base text-white collection-card-text focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all cursor-pointer font-medium"
+            >
+              <option value="desc" className="bg-surface">Descending</option>
+              <option value="asc" className="bg-surface">Ascending</option>
             </select>
           </div>
         </div>

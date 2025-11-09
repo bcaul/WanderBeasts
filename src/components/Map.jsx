@@ -24,7 +24,7 @@ export default function Map() {
   const map = useRef(null)
   const [mapLoaded, setMapLoaded] = useState(false)
   const [mapError, setMapError] = useState(null)
-  const { location, error: locationError } = useLocation()
+  const { location, error: locationError } = useLocation(true, 2000) // Update every 2 seconds for smoother tracking
   const { creatures, loading: creaturesLoading } = useCreatures(
     location?.latitude,
     location?.longitude
@@ -291,6 +291,7 @@ export default function Map() {
         .setLngLat([location.longitude, location.latitude])
         .addTo(map.current)
     } else {
+      // Always update marker position - this ensures smooth movement
       map.current._userMarker.setLngLat([location.longitude, location.latitude])
       const headingDegrees = location.heading !== null && location.heading !== undefined && !isNaN(location.heading) 
         ? location.heading 
@@ -298,6 +299,8 @@ export default function Map() {
       const markerElement = map.current._userMarker.getElement()
       const svgElement = markerElement?.querySelector('svg')
       if (svgElement) {
+        // Smooth rotation transition
+        svgElement.style.transition = 'transform 0.3s ease-out'
         svgElement.style.transform = `rotate(${headingDegrees}deg)`
       }
     }
@@ -345,8 +348,9 @@ export default function Map() {
     setParkName(result.parkName || null)
   }
 
+  // Generate spawns for a location (async function)
   const generateSpawnsForLocation = async (lat, lon) => {
-    if (!lat || !lon) {
+    if (!lat || !lon || isNaN(lat) || isNaN(lon)) {
       console.warn('Cannot generate spawns: invalid location', { lat, lon })
       return
     }
@@ -357,18 +361,17 @@ export default function Map() {
       const countryCode = await getCountryCodeCached(lat, lon)
       const spawnCount = await generateSpawns(lat, lon, 500, parkStatus.inPark, countryCode)
       
-      setSpawnDebugInfo({
-        generated: spawnCount,
-        inPark: parkStatus.inPark,
-        countryCode,
-        timestamp: new Date().toLocaleTimeString(),
-      })
+      // Debug info (optional - can be removed if not needed)
+      if (import.meta.env.DEV) {
+        console.log('Spawns generated:', {
+          count: spawnCount,
+          inPark: parkStatus.inPark,
+          countryCode,
+          location: { lat, lon }
+        })
+      }
     } catch (error) {
       console.error('Error generating spawns:', error)
-      setSpawnDebugInfo({
-        error: error.message,
-        timestamp: new Date().toLocaleTimeString(),
-      })
     } finally {
       setSpawnGenerating(false)
     }
@@ -1133,9 +1136,26 @@ export default function Map() {
   if (locationError) {
     return (
       <div className="flex items-center justify-center h-full bg-background">
-        <div className="text-center p-4">
-          <p className="text-red-400 mb-2">{locationError}</p>
-          <p className="text-gray-400 text-sm">Please enable location permissions</p>
+        <div className="text-center p-4 max-w-md">
+          <p className="text-red-400 mb-2 font-semibold">Location Error</p>
+          <p className="text-gray-300 text-sm mb-4">{locationError}</p>
+          <div className="text-left text-gray-400 text-xs space-y-2 bg-surface/50 p-4 rounded-lg mb-4">
+            <p><strong>Possible solutions:</strong></p>
+            <ul className="list-disc list-inside space-y-1 ml-2">
+              <li>Check browser location permissions (look for the location icon in your browser's address bar)</li>
+              <li>Enable location services on your device</li>
+              <li>Make sure you're using HTTPS (required for location access)</li>
+              <li>Try moving to an area with better GPS signal or enable WiFi/cell tower location</li>
+              <li>Check if other apps (like Google Maps) can access your location</li>
+              <li>If indoors, try moving near a window or going outside</li>
+            </ul>
+          </div>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg transition-colors"
+          >
+            Retry
+          </button>
         </div>
       </div>
     )
@@ -1209,23 +1229,49 @@ export default function Map() {
         </div>
       )}
 
-      {/* Loading indicator */}
+      {/* Location accuracy indicator */}
+      {location && location.accuracy && (
+        <div className={`absolute top-4 right-4 px-3 py-2 rounded-lg shadow-lg z-10 text-xs ${
+          location.accuracy < 20
+            ? 'bg-green-500/90 text-white'
+            : location.accuracy < 50
+            ? 'bg-yellow-500/90 text-white'
+            : 'bg-orange-500/90 text-white'
+        }`}>
+          <div className="flex items-center gap-2">
+            <span>
+              {location.accuracy < 20
+                ? '🎯 High Accuracy'
+                : location.accuracy < 50
+                ? '📍 Medium Accuracy'
+                : '⚠️ Low Accuracy'}
+            </span>
+            <span className="opacity-80">
+              {location.accuracy < 1000
+                ? `±${Math.round(location.accuracy)}m`
+                : `±${(location.accuracy / 1000).toFixed(1)}km`}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Loading indicator - positioned below accuracy indicator if present */}
       {creaturesLoading && (
-        <div className="absolute top-4 right-4 bg-surface/90 text-white px-4 py-2 rounded-lg shadow-lg z-10">
+        <div className={`absolute ${location && location.accuracy ? 'top-16' : 'top-4'} right-4 bg-surface/90 text-white px-4 py-2 rounded-lg shadow-lg z-10`}>
           Searching for creatures...
         </div>
       )}
 
       {/* Challenge generation status */}
       {generatingChallenges && (
-        <div className="absolute top-16 right-4 bg-surface/90 text-white px-4 py-2 rounded-lg shadow-lg z-10">
+        <div className={`absolute ${location && location.accuracy ? 'top-28' : 'top-16'} right-4 bg-surface/90 text-white px-4 py-2 rounded-lg shadow-lg z-10`}>
           Generating challenges...
         </div>
       )}
 
       {/* Spawn generation status */}
       {spawnGenerating && (
-        <div className="absolute top-28 right-4 bg-surface/90 text-white px-4 py-2 rounded-lg shadow-lg z-10">
+        <div className={`absolute ${location && location.accuracy ? 'top-40' : 'top-28'} right-4 bg-surface/90 text-white px-4 py-2 rounded-lg shadow-lg z-10`}>
           Generating spawns...
         </div>
       )}

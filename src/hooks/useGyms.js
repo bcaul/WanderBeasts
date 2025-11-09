@@ -91,7 +91,10 @@ export function useGyms(latitude, longitude, radiusMeters = 5000) {
             
             // Skip if we've already seen a gym at this exact location
             if (locationKeyMap[locationKey]) {
-              console.log('Skipping duplicate gym at same location:', gym.name, gym.id)
+              // Only log in development to reduce console noise
+              if (import.meta.env.DEV) {
+                console.log('Skipping duplicate gym at same location:', gym.name, gym.id)
+              }
               return
             }
             

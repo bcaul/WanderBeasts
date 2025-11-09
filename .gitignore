@@ -32,3 +32,14 @@ dist-ssr
 sw.js
 workbox-*.js
 
+# Temporary SQL files (use migrations instead)
+*_TEMP.sql
+*_FIX*.sql
+*_VERIFY*.sql
+ADD_*.sql
+KEEP_*.sql
+
+# Documentation that's redundant or outdated
+*_HELP.md
+*_TROUBLESHOOTING.md
+*_SETUP_GUIDE.md
