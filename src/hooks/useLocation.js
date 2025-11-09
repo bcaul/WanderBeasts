@@ -25,9 +25,9 @@ export function useLocation(watch = true, updateInterval = 3000) {
         if (mounted) {
           // Validate position before setting
           if (position && position.latitude && position.longitude) {
-            setLocation(position)
-            setLoading(false)
-            lastUpdateRef.current = Date.now()
+          setLocation(position)
+          setLoading(false)
+          lastUpdateRef.current = Date.now()
             retryCountRef.current = 0
           } else {
             throw new Error('Invalid location data received')
@@ -38,8 +38,8 @@ export function useLocation(watch = true, updateInterval = 3000) {
           console.warn('Location update failed:', err.message)
           // Only set error after multiple failures
           if (retryCountRef.current >= 3) {
-            setError(err.message)
-            setLoading(false)
+          setError(err.message)
+          setLoading(false)
           } else {
             // Retry after a delay
             retryCountRef.current++
@@ -90,7 +90,7 @@ export function useLocation(watch = true, updateInterval = 3000) {
             // Only set error if we haven't had a successful update in a while
             const timeSinceLastUpdate = Date.now() - lastUpdateRef.current
             if (timeSinceLastUpdate > 30000) {
-              setError(err.message)
+            setError(err.message)
             }
           }
         }

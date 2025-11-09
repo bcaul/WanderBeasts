@@ -24,11 +24,11 @@ export function checkEnvVars() {
 let supabase = null
 if (supabaseUrl && supabaseAnonKey) {
   supabase = createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-    },
-  })
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+  },
+})
 } else {
   // Create a dummy client that will fail gracefully
   supabase = createClient('https://placeholder.supabase.co', 'placeholder-key', {

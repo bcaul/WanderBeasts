@@ -186,8 +186,8 @@ export default function AIAssistant({ latitude, longitude, inPark, parkName }) {
             ) : recommendations.length > 0 ? (
               <div className="space-y-3">
                 {recommendations.map((tip, index) => (
-                  <div
-                    key={index}
+                <div
+                  key={index}
                     className="group relative bg-gradient-to-br from-gray-800/70 via-gray-800/50 to-gray-900/60 backdrop-blur-md border-2 border-emerald-500/30 rounded-2xl p-4 text-sm text-gray-100 hover:border-emerald-400/50 hover:bg-gray-800/80 transition-all duration-300 animate-in fade-in slide-in-from-right hover:scale-[1.02] hover:shadow-lg"
                     style={{ animationDelay: `${index * 100}ms` }}
                   >
@@ -198,7 +198,7 @@ export default function AIAssistant({ latitude, longitude, inPark, parkName }) {
                     </div>
                   </div>
                 ))}
-              </div>
+                </div>
             ) : (
               <div className="text-center py-10">
                 <div className="relative inline-block mb-4">

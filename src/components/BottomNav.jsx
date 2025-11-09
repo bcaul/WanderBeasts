@@ -47,13 +47,13 @@ export default function BottomNav() {
 
             <div className="relative flex items-center justify-center gap-0.5 transition-all duration-500 ease-in-out">
               {navItems.map((item, index) => {
-                const Icon = item.icon
-                const isActive = location.pathname === item.path
+        const Icon = item.icon
+        const isActive = location.pathname === item.path
 
-                return (
-                  <Link
-                    key={item.path}
-                    to={item.path}
+        return (
+          <Link
+            key={item.path}
+            to={item.path}
                     className="relative flex flex-col items-center justify-center px-3 py-1.5 transition-all duration-300 group rounded-full"
                   >
                     {/* Active background - rounded pill */}
@@ -82,9 +82,9 @@ export default function BottomNav() {
                     }`}>
                       {item.label}
                     </span>
-                  </Link>
-                )
-              })}
+          </Link>
+        )
+      })}
             </div>
           </>
         )}

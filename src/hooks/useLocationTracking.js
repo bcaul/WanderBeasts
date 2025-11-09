@@ -62,8 +62,8 @@ export function useLocationTracking(location) {
         // Only warn in development to reduce console noise
         if (import.meta.env.DEV) {
           console.warn(`GPS jump detected: ${distance.toFixed(2)}m (threshold: ${jumpThreshold.toFixed(2)}m, accuracy: ${currentAccuracy?.toFixed(2)}m) - not counting for distance tracking but updating location`)
-        }
       }
+    }
     }
 
     // Always update location reference so map shows current position
@@ -117,7 +117,7 @@ export function useLocationTracking(location) {
     if (distanceTraveledRef.current >= 50) {
       updateWalkingChallenges()
     }
-    
+
     // Cleanup on unmount
     return () => {
       if (trackingIntervalRef.current) {

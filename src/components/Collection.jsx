@@ -137,12 +137,12 @@ export default function Collection() {
 
   // Apply sorting with defensive checks
   if (filteredCatches.length > 0) {
-    if (sortBy === 'cp') {
+  if (sortBy === 'cp') {
       filteredCatches.sort((a, b) => {
         const result = (b.highestCP || 0) - (a.highestCP || 0)
         return sortOrder === 'asc' ? -result : result
       })
-    } else if (sortBy === 'name') {
+  } else if (sortBy === 'name') {
       filteredCatches.sort((a, b) => {
         const aName = a.creature?.name || ''
         const bName = b.creature?.name || ''
@@ -156,15 +156,15 @@ export default function Collection() {
         const result = bRarity - aRarity
         return sortOrder === 'asc' ? -result : result
       })
-    } else {
+  } else {
       // Sort by most recent catch (date)
-      filteredCatches.sort((a, b) => {
+    filteredCatches.sort((a, b) => {
         if (!a.catches || !a.catches[0] || !b.catches || !b.catches[0]) return 0
-        const aDate = new Date(a.catches[0].caught_at)
-        const bDate = new Date(b.catches[0].caught_at)
+      const aDate = new Date(a.catches[0].caught_at)
+      const bDate = new Date(b.catches[0].caught_at)
         const result = bDate - aDate
         return sortOrder === 'asc' ? -result : result
-      })
+    })
     }
   }
 
@@ -351,9 +351,9 @@ export default function Collection() {
                     referrerPolicy="no-referrer"
                     onError={(e) => {
                       if (e.target) {
-                        e.target.style.display = 'none'
+                      e.target.style.display = 'none'
                         if (e.target.nextSibling) {
-                          e.target.nextSibling.style.display = 'block'
+                      e.target.nextSibling.style.display = 'block'
                         }
                       }
                     }}
