@@ -12,24 +12,28 @@ export default function BottomNav() {
   ]
 
   return (
-    <nav className="bg-surface border-t border-gray-700 flex justify-around items-center h-16 px-4 safe-area-bottom relative z-50">
-      {navItems.map((item) => {
-        const Icon = item.icon
-        const isActive = location.pathname === item.path
+    <nav className="fixed bottom-0 left-0 right-0 flex justify-center items-end pb-2 safe-area-bottom z-50 px-4 pointer-events-none">
+      <div className="bg-surface/95 backdrop-blur-md border border-gray-700/50 rounded-full flex justify-around items-center h-16 px-2 shadow-2xl pointer-events-auto">
+        {navItems.map((item) => {
+          const Icon = item.icon
+          const isActive = location.pathname === item.path
 
-        return (
-          <Link
-            key={item.path}
-            to={item.path}
-            className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${
-              isActive ? 'text-primary' : 'text-gray-400'
-            } hover:text-primary/80`}
-          >
-            <Icon size={24} />
-            <span className="text-xs mt-1">{item.label}</span>
-          </Link>
-        )
-      })}
+          return (
+            <Link
+              key={item.path}
+              to={item.path}
+              className={`flex flex-col items-center justify-center flex-1 h-full transition-all rounded-full px-3 mx-1 ${
+                isActive 
+                  ? 'text-primary bg-primary/10' 
+                  : 'text-gray-400 hover:text-primary/80 hover:bg-white/5'
+              }`}
+            >
+              <Icon size={22} />
+              <span className="text-xs mt-0.5 font-medium">{item.label}</span>
+            </Link>
+          )
+        })}
+      </div>
     </nav>
   )
 }

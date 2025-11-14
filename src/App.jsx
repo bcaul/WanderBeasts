@@ -82,7 +82,7 @@ function App() {
 
   return (
     <Router>
-      <div className="h-screen w-screen bg-background flex flex-col overflow-hidden">
+      <div className="h-screen w-screen bg-[#1a1a1a] flex flex-col overflow-hidden">
         <Routes>
           <Route path="/" element={<MapView />} />
           <Route path="/collection" element={<CollectionView />} />

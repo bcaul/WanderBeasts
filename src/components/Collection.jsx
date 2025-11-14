@@ -304,7 +304,7 @@ export default function Collection() {
                   />
                 ) : null}
                 <div className="text-8xl md:text-9xl" style={{ display: getCreatureSprite(item.creature) ? 'none' : 'block' }}>
-                  {getCreatureEmoji(item.creature.name)}
+                  🐾
                 </div>
               </div>
               <h3 className="font-bold text-white text-center mb-3 text-lg md:text-xl collection-card-text leading-tight">

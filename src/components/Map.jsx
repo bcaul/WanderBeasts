@@ -10,8 +10,8 @@ import { checkIfInParkCached } from '../lib/overpass.js'
 import { generateSpawns } from '../lib/spawning.js'
 import { generateChallengesNearParks, generateChallengesAtLocation } from '../lib/generateChallenges.js'
 import { getCountryCodeCached } from '../lib/geocoding.js'
-import { getCreatureSprite, getCreatureEmoji } from '../lib/creatureSprites.js'
-import { Target, MapPin } from 'lucide-react'
+import { getCreatureSprite } from '../lib/creatureSprites.js'
+import { Target, MapPin, Navigation } from 'lucide-react'
 import CatchModal from './CatchModal.jsx'
 import AIAssistant from './AIAssistant.jsx'
 import ChallengePanel from './ChallengePanel.jsx'
@@ -60,6 +60,18 @@ export default function Map() {
   const [generatingChallenges, setGeneratingChallenges] = useState(false)
   const lastChallengeGenRef = useRef(0)
   const styleLoadTimeoutRef = useRef(null)
+
+  // Function to center map on user location
+  const centerOnUserLocation = useCallback(() => {
+    if (!map.current || !location || !mapLoaded) return
+    
+    map.current.flyTo({
+      center: [location.longitude, location.latitude],
+      zoom: 16,
+      duration: 1000,
+      essential: true, // This animation is considered essential with respect to prefers-reduced-motion
+    })
+  }, [location, mapLoaded])
 
   useEffect(() => {
     if (map.current || !mapContainer.current) {
@@ -562,6 +574,7 @@ export default function Map() {
     el.style.cursor = 'pointer'
     el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)'
     
+    // Try to load sprite, fallback to pawprint emoji
     const spriteUrl = getCreatureSprite(creatureType)
     
     if (spriteUrl && !spriteUrl.includes('{SPRITE_ID}')) {
@@ -575,24 +588,24 @@ export default function Map() {
       if (!('imageRendering' in img.style)) {
         img.style.imageRendering = '-webkit-optimize-contrast'
       }
-      img.loading = 'eager' // Load immediately
+      img.loading = 'eager'
+      img.referrerPolicy = 'no-referrer'
       
       // Set error handler FIRST (before src)
       let errorHandled = false
       img.onerror = () => {
         if (errorHandled) return // Prevent multiple error handlers
         errorHandled = true
-        const emoji = getCreatureEmoji(creatureType.name)
-        el.innerHTML = `<span style="font-size: 22px; line-height: 1; display: block;">${emoji}</span>`
+        // Fallback to pawprint emoji if sprite fails to load
+        el.innerHTML = `<span style="font-size: 22px; line-height: 1; display: block;">🐾</span>`
       }
       
       // Add to DOM and set src
       el.appendChild(img)
       img.src = spriteUrl
     } else {
-      // Fallback to emoji if no valid sprite URL
-      const emoji = getCreatureEmoji(creatureType.name)
-      el.innerHTML = `<span style="font-size: 22px; line-height: 1; display: block;">${emoji}</span>`
+      // Fallback to pawprint emoji if no valid sprite URL
+      el.innerHTML = `<span style="font-size: 22px; line-height: 1; display: block;">🐾</span>`
     }
     
     // Add subtle hover effect (visual only, no action)
@@ -746,7 +759,7 @@ export default function Map() {
       el.style.boxShadow = '0 2px 8px rgba(74, 144, 226, 0.5), 0 0 0 2px rgba(74, 144, 226, 0.2)'
     }
     
-    // Add creature sprite or emoji
+    // Add creature sprite or pawprint emoji fallback
     if (firstCreature) {
       const spriteUrl = getCreatureSprite(firstCreature)
       if (spriteUrl && !spriteUrl.includes('{SPRITE_ID}')) {
@@ -758,20 +771,21 @@ export default function Map() {
         img.style.borderRadius = '50%'
         img.style.imageRendering = 'crisp-edges'
         img.loading = 'eager'
+        img.referrerPolicy = 'no-referrer'
         
         let errorHandled = false
         img.onerror = () => {
           if (errorHandled) return
           errorHandled = true
-          const emoji = getCreatureEmoji(firstCreature.name)
-          el.innerHTML = `<span style="font-size: 20px; line-height: 1; display: block;">${emoji}</span>`
+          // Fallback to pawprint emoji if sprite fails
+          el.innerHTML = '<span style="font-size: 20px; line-height: 1; display: block;">🐾</span>'
         }
         
         el.appendChild(img)
         img.src = spriteUrl
       } else {
-        const emoji = getCreatureEmoji(firstCreature.name)
-        el.innerHTML = `<span style="font-size: 20px; line-height: 1; display: block;">${emoji}</span>`
+        // Fallback to pawprint emoji if no valid sprite
+        el.innerHTML = '<span style="font-size: 20px; line-height: 1; display: block;">🐾</span>'
       }
     } else {
       // No creature yet, show simple gym icon
@@ -1195,6 +1209,19 @@ export default function Map() {
           </span>
         )}
       </button>
+
+      {/* My Location Button - Bottom left, under Challenges button */}
+      {location && mapLoaded && (
+        <button
+          className="absolute bottom-16 left-4 bg-primary hover:bg-primary/90 text-white p-3 rounded-full shadow-lg flex items-center gap-2"
+          style={{ zIndex: 1050 }}
+          onClick={centerOnUserLocation}
+          title="Center map on your location"
+          aria-label="Center map on your location"
+        >
+          <Navigation size={20} />
+        </button>
+      )}
 
       {/* AI Assistant */}
       {location && (
