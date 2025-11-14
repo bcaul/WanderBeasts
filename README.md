@@ -187,8 +187,6 @@ MIT License
 
 ## Adding Gyms
 
-See [ADDING_GYMS.md](./ADDING_GYMS.md) for detailed instructions on adding gym locations to your game.
-
 Quick steps:
 1. Edit coordinates in `supabase/migrations/012_add_sample_gyms.sql`
 2. Run migrations 012 and 013 in Supabase SQL Editor
