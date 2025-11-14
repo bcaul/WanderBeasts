@@ -98,7 +98,16 @@ function App() {
 
 function MapView() {
   return (
-    <div className="flex-1 relative overflow-hidden" style={{ minHeight: 0 }}>
+    <div 
+      className="flex-1 relative overflow-hidden" 
+      style={{ 
+        minHeight: 0,
+        width: '100%',
+        height: '100%',
+        position: 'relative',
+        backgroundColor: '#1a1a1a' // Dark background instead of green
+      }}
+    >
       <Map />
     </div>
   )

@@ -59,35 +59,148 @@ export default function Map() {
   const [showGymPanel, setShowGymPanel] = useState(false)
   const [generatingChallenges, setGeneratingChallenges] = useState(false)
   const lastChallengeGenRef = useRef(0)
+  const styleLoadTimeoutRef = useRef(null)
 
   useEffect(() => {
-    if (map.current || !mapContainer.current) return
-
-    const mapboxStyle = import.meta.env.VITE_MAPBOX_STYLE || 'mapbox://styles/taramulhall/cmhqieqsu004201s56pwv93xw'
-    
-    try {
-      map.current = new mapboxgl.Map({
-        container: mapContainer.current,
-        style: mapboxStyle,
-        center: [0, 0],
-        zoom: 15,
-      })
-
-      map.current.on('load', () => {
-        setMapLoaded(true)
-      })
-
-      map.current.on('error', (e) => {
-        console.error('Mapbox error:', e)
-      })
-    } catch (error) {
-      console.error('Error initializing map:', error)
+    if (map.current || !mapContainer.current) {
+      console.log('Map initialization skipped:', { hasMap: !!map.current, hasContainer: !!mapContainer.current })
+      return
     }
 
+    const token = import.meta.env.VITE_MAPBOX_TOKEN
+    
+    console.log('Map initialization check:', { 
+      hasToken: !!token, 
+      tokenLength: token?.length || 0,
+      containerExists: !!mapContainer.current,
+      containerWidth: mapContainer.current?.offsetWidth,
+      containerHeight: mapContainer.current?.offsetHeight
+    })
+    
+    if (!token) {
+      console.error('❌ Mapbox token is missing! Please set VITE_MAPBOX_TOKEN in your .env file')
+      return
+    }
+
+    // Wait a tick to ensure container has dimensions
+    const initTimer = setTimeout(() => {
+      if (!mapContainer.current) {
+        console.error('Map container is null after timeout')
+        return
+      }
+
+      // Use Tara's custom style with fallback to default if 404
+      const fallbackStyle = 'mapbox://styles/mapbox/dark-v11'
+      const customStyle = import.meta.env.VITE_MAPBOX_STYLE || 'mapbox://styles/bcaul/cmhyxw5hg00l801qu1iqz4798'
+      const mapboxStyle = customStyle
+      
+      let hasFallenBack = false
+      
+      try {
+        console.log('🗺️ Initializing map with style:', mapboxStyle)
+        console.log('📦 Container size:', {
+          width: mapContainer.current.offsetWidth,
+          height: mapContainer.current.offsetHeight
+        })
+        
+        map.current = new mapboxgl.Map({
+          container: mapContainer.current,
+          style: mapboxStyle,
+          center: [0, 0],
+          zoom: 15,
+          attributionControl: false,
+        })
+
+        map.current.on('load', () => {
+          if (styleLoadTimeoutRef.current) {
+            clearTimeout(styleLoadTimeoutRef.current)
+            styleLoadTimeoutRef.current = null
+          }
+          // Log the actual loaded style
+          const currentStyle = map.current.getStyle()
+          const styleName = currentStyle?.name || mapboxStyle
+          console.log('✅ Map loaded successfully!')
+          console.log('📌 Requested style:', mapboxStyle)
+          console.log('📌 Actual loaded style:', styleName)
+          console.log('📌 Style metadata:', {
+            name: styleName,
+            version: currentStyle?.version,
+            owner: currentStyle?.owner || 'unknown'
+          })
+          setMapLoaded(true)
+        })
+
+        map.current.on('error', (e) => {
+          const errorObj = e.error || {}
+          const errorMsg = (errorObj.message || errorObj.toString() || '').toLowerCase()
+          const errorUrl = errorObj.url || ''
+          
+          // If we get a 404 for the style URL, fall back to default
+          if (!hasFallenBack && (errorMsg.includes('404') || errorMsg.includes('not found')) && 
+              errorUrl.includes('styles/v1')) {
+            console.warn('⚠️ Style not found (404) - Tara\'s style may be private or deleted')
+            console.log('🔄 Falling back to default Mapbox dark style...')
+            hasFallenBack = true
+            try {
+              map.current.setStyle(fallbackStyle)
+              console.log('✅ Fallback style applied')
+            } catch (fallbackError) {
+              console.error('❌ Failed to load fallback style:', fallbackError)
+            }
+          } else if (!errorMsg.includes('404') && !errorMsg.includes('not found')) {
+            console.error('❌ Mapbox error:', e)
+          }
+        })
+
+        // Listen for style loading events
+        map.current.on('style.load', () => {
+          if (styleLoadTimeoutRef.current) {
+            clearTimeout(styleLoadTimeoutRef.current)
+            styleLoadTimeoutRef.current = null
+          }
+          const currentStyle = map.current.getStyle()
+          const styleName = currentStyle?.name || 'Unknown'
+          console.log('✅ Map style loaded successfully!')
+          console.log('📌 Style name:', styleName)
+          console.log('📌 Style metadata:', {
+            version: currentStyle?.version,
+            owner: currentStyle?.owner,
+            id: currentStyle?.id
+          })
+          if (!mapLoaded) {
+            setMapLoaded(true)
+          }
+        })
+
+        map.current.on('styleimagemissing', () => {
+          console.warn('⚠️ Map style image missing')
+        })
+
+        map.current.on('data', (e) => {
+          if (e.dataType === 'style' && e.isSourceLoaded === false) {
+            console.warn('⚠️ Style data loading issue')
+          }
+        })
+
+        map.current.on('data', () => {
+          console.log('📊 Map data event')
+        })
+      } catch (error) {
+        console.error('❌ Error initializing map:', error)
+      }
+    }, 100)
+
     return () => {
+      clearTimeout(initTimer)
+      if (styleLoadTimeoutRef.current) {
+        clearTimeout(styleLoadTimeoutRef.current)
+        styleLoadTimeoutRef.current = null
+      }
       if (map.current) {
+        console.log('🧹 Cleaning up map')
         map.current.remove()
         map.current = null
+        setMapLoaded(false)
       }
     }
   }, [])
@@ -200,30 +313,122 @@ export default function Map() {
     try {
       const parkStatus = await checkIfInParkCached(lat, lon)
       const countryCode = await getCountryCodeCached(lat, lon)
-      const spawnCount = await generateSpawns(lat, lon, 500, parkStatus.inPark, countryCode)
-      
-      setSpawnDebugInfo({
-        generated: spawnCount,
-        inPark: parkStatus.inPark,
-        countryCode,
-        timestamp: new Date().toLocaleTimeString(),
-      })
+      await generateSpawns(lat, lon, 500, parkStatus.inPark, countryCode)
     } catch (error) {
       console.error('Error generating spawns:', error)
-      setSpawnDebugInfo({
-        error: error.message,
-        timestamp: new Date().toLocaleTimeString(),
-      })
     } finally {
       setSpawnGenerating(false)
     }
   }
 
-  const handleManualSpawn = () => {
-    if (location) {
-      generateSpawnsForLocation(location.latitude, location.longitude)
+
+  // Parse WKB hex string to coordinates (same as in spawning.js)
+  const parseWKBHex = useCallback((hex) => {
+    try {
+      if (!hex || typeof hex !== 'string' || hex.length < 42) {
+        return null
+      }
+      
+      // WKB Extended format with SRID
+      // Skip: 2 (endian) + 8 (type) + 8 (SRID) = 18 hex chars
+      const xHex = hex.substring(18, 34) // Longitude (8 bytes)
+      const yHex = hex.substring(34, 50) // Latitude (8 bytes)
+      
+      // Convert hex to Float64 (little endian)
+      const parseDouble = (hexStr) => {
+        const buffer = new ArrayBuffer(8)
+        const view = new DataView(buffer)
+        for (let i = 0; i < 8; i++) {
+          view.setUint8(i, parseInt(hexStr.substr(i * 2, 2), 16))
+        }
+        return view.getFloat64(0, true)
+      }
+      
+      const lon = parseDouble(xHex)
+      const lat = parseDouble(yHex)
+      
+      if (isNaN(lon) || isNaN(lat) || !isFinite(lon) || !isFinite(lat)) {
+        return null
+      }
+      
+      return [lon, lat]
+    } catch (error) {
+      console.error('Error parsing WKB hex:', error)
+      return null
     }
-  }
+  }, [])
+
+  // Calculate distance between two points using Haversine formula
+  const calculateDistance = useCallback((lat1, lon1, lat2, lon2) => {
+    const R = 6371e3 // Earth's radius in meters
+    const φ1 = (lat1 * Math.PI) / 180
+    const φ2 = (lat2 * Math.PI) / 180
+    const Δφ = ((lat2 - lat1) * Math.PI) / 180
+    const Δλ = ((lon2 - lon1) * Math.PI) / 180
+
+    const a =
+      Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+      Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2)
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+
+    return R * c // Distance in meters
+  }, [])
+
+  // Parse PostGIS geography point
+  const parseLocation = useCallback((location) => {
+    // Handle WKB hex format (starts with "0101")
+    if (typeof location === 'string' && location.startsWith('0101')) {
+      const coords = parseWKBHex(location)
+      if (coords) return coords
+    }
+    
+    // Handle WKT string format: "POINT(lon lat)" or "SRID=4326;POINT(lon lat)"
+    if (typeof location === 'string') {
+      // Try to match POINT format
+      const match = location.match(/POINT\(([^)]+)\)/)
+      if (match) {
+        const coords = match[1].trim().split(/\s+/)
+        if (coords.length >= 2) {
+          const lon = parseFloat(coords[0])
+          const lat = parseFloat(coords[1])
+          if (!isNaN(lon) && !isNaN(lat)) {
+            return [lon, lat]
+          }
+        }
+      }
+      // Try to parse as WKT without POINT wrapper
+      const wktMatch = location.match(/(-?\d+\.?\d*)\s+(-?\d+\.?\d*)/)
+      if (wktMatch) {
+        const lon = parseFloat(wktMatch[1])
+        const lat = parseFloat(wktMatch[2])
+        if (!isNaN(lon) && !isNaN(lat)) {
+          return [lon, lat]
+        }
+      }
+    }
+    
+    // Handle object format from Supabase
+    if (location && typeof location === 'object') {
+      // Check for coordinates array [lon, lat]
+      if (Array.isArray(location.coordinates) && location.coordinates.length >= 2) {
+        return [parseFloat(location.coordinates[0]), parseFloat(location.coordinates[1])]
+      }
+      // Check for x/y properties (lon/lat)
+      if (location.x !== undefined && location.y !== undefined) {
+        return [parseFloat(location.x), parseFloat(location.y)]
+      }
+      // Check for lon/lat properties
+      if (location.lon !== undefined && location.lat !== undefined) {
+        return [parseFloat(location.lon), parseFloat(location.lat)]
+      }
+      // Check for lng/lat properties (common in some APIs)
+      if (location.lng !== undefined && location.lat !== undefined) {
+        return [parseFloat(location.lng), parseFloat(location.lat)]
+      }
+    }
+    
+    return null
+  }, [parseWKBHex])
 
   useEffect(() => {
     if (!map.current || !mapLoaded) return
@@ -341,114 +546,6 @@ export default function Map() {
       }
     })
   }, [creatures, mapLoaded, caughtCreatureIds, location, parseLocation])
-
-  // Parse WKB hex string to coordinates (same as in spawning.js)
-  const parseWKBHex = (hex) => {
-    try {
-      if (!hex || typeof hex !== 'string' || hex.length < 42) {
-        return null
-      }
-      
-      // WKB Extended format with SRID
-      // Skip: 2 (endian) + 8 (type) + 8 (SRID) = 18 hex chars
-      const xHex = hex.substring(18, 34) // Longitude (8 bytes)
-      const yHex = hex.substring(34, 50) // Latitude (8 bytes)
-      
-      // Convert hex to Float64 (little endian)
-      const parseDouble = (hexStr) => {
-        const buffer = new ArrayBuffer(8)
-        const view = new DataView(buffer)
-        for (let i = 0; i < 8; i++) {
-          view.setUint8(i, parseInt(hexStr.substr(i * 2, 2), 16))
-        }
-        return view.getFloat64(0, true)
-      }
-      
-      const lon = parseDouble(xHex)
-      const lat = parseDouble(yHex)
-      
-      if (isNaN(lon) || isNaN(lat) || !isFinite(lon) || !isFinite(lat)) {
-        return null
-      }
-      
-      return [lon, lat]
-    } catch (error) {
-      console.error('Error parsing WKB hex:', error)
-      return null
-    }
-  }
-
-  // Calculate distance between two points using Haversine formula
-  const calculateDistance = (lat1, lon1, lat2, lon2) => {
-    const R = 6371e3 // Earth's radius in meters
-    const φ1 = (lat1 * Math.PI) / 180
-    const φ2 = (lat2 * Math.PI) / 180
-    const Δφ = ((lat2 - lat1) * Math.PI) / 180
-    const Δλ = ((lon2 - lon1) * Math.PI) / 180
-
-    const a =
-      Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-      Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2)
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-
-    return R * c // Distance in meters
-  }
-
-  // Parse PostGIS geography point
-  const parseLocation = (location) => {
-    // Handle WKB hex format (starts with "0101")
-    if (typeof location === 'string' && location.startsWith('0101')) {
-      const coords = parseWKBHex(location)
-      if (coords) return coords
-    }
-    
-    // Handle WKT string format: "POINT(lon lat)" or "SRID=4326;POINT(lon lat)"
-    if (typeof location === 'string') {
-      // Try to match POINT format
-      const match = location.match(/POINT\(([^)]+)\)/)
-      if (match) {
-        const coords = match[1].trim().split(/\s+/)
-        if (coords.length >= 2) {
-          const lon = parseFloat(coords[0])
-          const lat = parseFloat(coords[1])
-          if (!isNaN(lon) && !isNaN(lat)) {
-            return [lon, lat]
-          }
-        }
-      }
-      // Try to parse as WKT without POINT wrapper
-      const wktMatch = location.match(/(-?\d+\.?\d*)\s+(-?\d+\.?\d*)/)
-      if (wktMatch) {
-        const lon = parseFloat(wktMatch[1])
-        const lat = parseFloat(wktMatch[2])
-        if (!isNaN(lon) && !isNaN(lat)) {
-          return [lon, lat]
-        }
-      }
-    }
-    
-    // Handle object format from Supabase
-    if (location && typeof location === 'object') {
-      // Check for coordinates array [lon, lat]
-      if (Array.isArray(location.coordinates) && location.coordinates.length >= 2) {
-        return [parseFloat(location.coordinates[0]), parseFloat(location.coordinates[1])]
-      }
-      // Check for x/y properties (lon/lat)
-      if (location.x !== undefined && location.y !== undefined) {
-        return [parseFloat(location.x), parseFloat(location.y)]
-      }
-      // Check for lon/lat properties
-      if (location.lon !== undefined && location.lat !== undefined) {
-        return [parseFloat(location.lon), parseFloat(location.lat)]
-      }
-      // Check for lng/lat properties (common in some APIs)
-      if (location.lng !== undefined && location.lat !== undefined) {
-        return [parseFloat(location.lng), parseFloat(location.lat)]
-      }
-    }
-    
-    return [null, null]
-  }
 
   const createMarkerElement = (creatureType) => {
     const el = document.createElement('div')
@@ -571,7 +668,9 @@ export default function Map() {
   useEffect(() => {
     if (!map.current || !mapLoaded) return
     challengeMarkersRef.current.forEach(marker => {
-      try { marker.remove() } catch (e) {}
+      try { marker.remove() } catch (e) {
+        // Ignore errors during cleanup
+      }
     })
     challengeMarkersRef.current = []
   }, [])
@@ -772,13 +871,17 @@ export default function Map() {
             try {
               marker.remove()
               markersToRemove.push(gymId)
-            } catch (e) {}
+            } catch (e) {
+              // Ignore errors during marker removal
+            }
             
             const badgeMarker = gymBadgeMarkersMapRef.current[gymId]
             if (badgeMarker) {
               try {
                 badgeMarker.remove()
-              } catch (e) {}
+              } catch (e) {
+                // Ignore errors during badge marker removal
+              }
               delete gymBadgeMarkersMapRef.current[gymId]
             }
           }
@@ -836,7 +939,9 @@ export default function Map() {
               if (existingBadgeMarker) {
                 try {
                   existingBadgeMarker.remove()
-                } catch (e) {}
+                } catch (e) {
+                  // Ignore errors during badge marker removal
+                }
                 delete gymBadgeMarkersMapRef.current[gym.id]
               }
             }
@@ -903,11 +1008,15 @@ export default function Map() {
       const badgeMarkersMap = gymBadgeMarkersMapRef.current
       
       Object.values(markersMap).forEach(marker => {
-        try { marker.remove() } catch (e) {}
+        try { marker.remove() } catch (e) {
+          // Ignore errors during cleanup
+        }
       })
       
       Object.values(badgeMarkersMap).forEach(badgeMarker => {
-        try { badgeMarker.remove() } catch (e) {}
+        try { badgeMarker.remove() } catch (e) {
+          // Ignore errors during cleanup
+        }
       })
       
       gymMarkersMapRef.current = {}
@@ -984,18 +1093,48 @@ export default function Map() {
   }
 
   return (
-    <div className="relative w-full h-full" style={{ position: 'relative', zIndex: 1, width: '100%', height: '100%' }}>
+    <div 
+      className="absolute inset-0 w-full h-full" 
+      style={{ 
+        position: 'absolute', 
+        top: 0, 
+        left: 0, 
+        right: 0, 
+        bottom: 0, 
+        width: '100%', 
+        height: '100%',
+        backgroundColor: '#1a1a1a',
+        zIndex: 1
+      }}
+    >
       <div 
         ref={mapContainer} 
-        className="w-full h-full" 
+        className="absolute inset-0 w-full h-full" 
         style={{ 
-          position: 'relative', 
-          zIndex: 1, 
+          position: 'absolute', 
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
           width: '100%', 
           height: '100%',
-          minHeight: '100%'
+          backgroundColor: '#1a1a1a',
+          zIndex: 1
         }} 
       />
+      
+      {/* Loading indicator */}
+      {!mapLoaded && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-50">
+          <div className="text-center p-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+            <p className="text-white">Loading map...</p>
+            {!import.meta.env.VITE_MAPBOX_TOKEN && (
+              <p className="text-red-400 text-sm mt-2">⚠️ Mapbox token not found. Check your .env file.</p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Park boost indicator */}
       {inPark && (
@@ -1025,62 +1164,6 @@ export default function Map() {
         </div>
       )}
 
-<<<<<<< HEAD
-      {/* Debug info and manual spawn button (for testing) */}
-      {location && (
-        <div className="absolute bottom-24 right-4 bg-surface/90 text-white px-4 py-2 rounded-lg shadow-lg z-50 max-w-xs" style={{ zIndex: 1050 }}>
-          <div className="text-xs mb-2 space-y-1">
-            <div className="font-bold">Creatures nearby: {creatures?.length || 0}</div>
-            <div className="text-gray-400">
-              Markers created: {markersRef.current.length}
-            </div>
-            {spawnDebugInfo && (
-              <div className="mt-1 text-gray-400">
-                <div>Last spawn: {spawnDebugInfo.generated || 0} generated</div>
-                {spawnDebugInfo.inPark && (
-                  <div className="text-green-400">🌳 In park (boosted)</div>
-                )}
-                {spawnDebugInfo.countryCode && (
-                  <div>Country: {spawnDebugInfo.countryCode}</div>
-                )}
-                {spawnDebugInfo.error && (
-                  <div className="text-red-400">Error: {spawnDebugInfo.error}</div>
-                )}
-              </div>
-            )}
-            {creatures && creatures.length > 0 && (
-              <div className="mt-2 text-gray-300">
-                <div className="font-semibold mb-1">Creatures:</div>
-                {creatures.slice(0, 3).map((c, i) => (
-                  <div key={i} className="text-xs">
-                    {c.creature_types?.name || 'Unknown'} ({c.creature_types?.rarity || '?'})
-                  </div>
-                ))}
-                {creatures.length > 3 && (
-                  <div className="text-xs text-gray-500">+{creatures.length - 3} more</div>
-                )}
-              </div>
-            )}
-          </div>
-          <button
-            onClick={handleManualSpawn}
-            disabled={spawnGenerating}
-            className="w-full bg-primary hover:bg-primary/90 text-white text-xs py-1 px-2 rounded transition-colors disabled:opacity-50 mb-2"
-            style={{ zIndex: 1050 }}
-          >
-            {spawnGenerating ? 'Generating...' : 'Generate Spawns'}
-          </button>
-          <button
-            onClick={() => location && generateChallengesForLocation(location.latitude, location.longitude)}
-            disabled={generatingChallenges}
-            className="w-full bg-secondary hover:bg-secondary/90 text-white text-xs py-1 px-2 rounded transition-colors disabled:opacity-50"
-            style={{ zIndex: 1050 }}
-          >
-            {generatingChallenges ? 'Generating Challenges...' : 'Generate Challenges'}
-          </button>
-        </div>
-      )}
-
       {/* Challenges Button - Left side of map */}
       <button
         className="absolute bottom-32 left-4 bg-primary hover:bg-primary/90 text-white p-3 rounded-full shadow-lg flex items-center gap-2"
@@ -1099,7 +1182,7 @@ export default function Map() {
 
       {/* Gyms Button - Left side of map */}
       <button
-        className="absolute bottom-48 left-4 bg-purple-600 hover:bg-purple-700 text-white p-3 rounded-full shadow-lg flex items-center gap-2"
+        className="absolute bottom-48 left-4 bg-primary hover:bg-primary/90 text-white p-3 rounded-full shadow-lg flex items-center gap-2"
         style={{ zIndex: 1050 }}
         onClick={() => setShowGymPanel(true)}
         title="View Gyms"
@@ -1144,7 +1227,7 @@ export default function Map() {
             setShowChallengePanel(false)
             setSelectedChallenge(null)
           }}
-          onChallengeAccept={(challenge) => {
+          onChallengeAccept={() => {
             setSelectedChallenge(null)
             // Refresh challenges - the useChallenges hook will refetch automatically
           }}

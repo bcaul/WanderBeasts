@@ -43,7 +43,11 @@ export async function getHuntingRecommendations(context) {
       return getDefaultRecommendations(context)
     }
 
-    const model = client.getGenerativeModel({ model: 'gemini-pro' })
+    // Use model from environment variable or fallback to gemini-pro
+    // Note: Model availability depends on your API key and region
+    // Common models: gemini-pro, gemini-1.5-flash, gemini-1.5-pro
+    const modelName = import.meta.env.VITE_GEMINI_MODEL || 'gemini-pro'
+    const model = client.getGenerativeModel({ model: modelName })
 
     const prompt = `You are a helpful guide for a creature-hunting game similar to Pokemon GO.
 

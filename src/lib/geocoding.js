@@ -53,11 +53,24 @@ export async function getLocationDetails(latitude, longitude) {
   }
 
   try {
+    // Validate coordinates
+    if (isNaN(latitude) || isNaN(longitude) || 
+        latitude < -90 || latitude > 90 || 
+        longitude < -180 || longitude > 180) {
+      console.warn('Invalid coordinates for geocoding:', { latitude, longitude })
+      return {}
+    }
+
     const response = await fetch(
       `https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json?access_token=${MAPBOX_ACCESS_TOKEN}&types=place,country&limit=5`
     )
 
     if (!response.ok) {
+      // 422 usually means invalid coordinates format or out of range
+      if (response.status === 422) {
+        console.warn('Geocoding API returned 422 - invalid coordinates or format')
+        return {}
+      }
       throw new Error(`Geocoding API error: ${response.status}`)
     }
 

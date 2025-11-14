@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase.js'
 import { getCreatureSprite } from '../lib/creatureSprites.js'
 import { X, Users, Lock } from 'lucide-react'
@@ -20,12 +20,116 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 }
 
 export default function CatchModal({ creature, userLocation, onClose, onCatch, onChallengeUpdate }) {
+  console.log('🎬 CatchModal component rendering, creature:', creature?.creature_types?.name, 'creature.id:', creature?.id)
   const [catching, setCatching] = useState(false)
   const [caught, setCaught] = useState(false)
   const [error, setError] = useState(null)
   const [isGymCreature, setIsGymCreature] = useState(false)
   const [playerCount, setPlayerCount] = useState(0)
   const [loadingPlayerCount, setLoadingPlayerCount] = useState(false)
+  const [bounceY, setBounceY] = useState(0)
+  const animationRef = useRef(null)
+  const caughtCreatureIdRef = useRef(null) // Track which creature was caught
+  const shouldStartAnimationRef = useRef(false) // Flag to start animation, persists across renders
+  
+  // Only reset caught state if creature changes AND we haven't caught this new creature yet
+  useEffect(() => {
+    if (creature?.id) {
+      // If creature ID changes and it's NOT the one we caught, reset state
+      if (caughtCreatureIdRef.current !== null && caughtCreatureIdRef.current !== creature.id) {
+        console.log('🔄 Creature changed from caught one, resetting. Old ID:', caughtCreatureIdRef.current, 'New ID:', creature.id)
+        setCaught(false)
+        caughtCreatureIdRef.current = null
+        shouldStartAnimationRef.current = false
+      }
+      // If creature matches the one we caught, ensure caught state is true and trigger animation if needed
+      else if (caughtCreatureIdRef.current === creature.id) {
+        if (!caught) {
+          console.log('✅ Restoring caught state for creature:', creature.id)
+          setCaught(true)
+        }
+        // If animation flag is still set, ensure animation runs
+        if (shouldStartAnimationRef.current) {
+          console.log('🎬 Animation flag still set, will trigger in animation useEffect')
+        }
+      }
+    }
+  }, [creature?.id, caught])
+  
+  useEffect(() => {
+    console.log('🔄 CatchModal useEffect - caught:', caught, 'bounceY:', bounceY, 'creature.id:', creature?.id, 'caughtCreatureId:', caughtCreatureIdRef.current, 'shouldStartAnimation:', shouldStartAnimationRef.current)
+    
+    // Start animation if flag is set and creature matches
+    // OR if the caught creature ID matches (even if prop changed, we still want to animate)
+    const shouldAnimate = shouldStartAnimationRef.current && caughtCreatureIdRef.current && 
+                          (creature?.id === caughtCreatureIdRef.current || !creature?.id)
+    
+    if (shouldAnimate && caughtCreatureIdRef.current) {
+      console.log('✅ Starting animation for caught creature:', caughtCreatureIdRef.current, 'current creature prop:', creature?.id)
+      shouldStartAnimationRef.current = false // Reset flag
+      setBounceY(0)
+      
+      // Use a ref to track frame so it persists across renders
+      let frame = 0
+      const totalFrames = 25 // 25 frames at ~20ms = ~500ms
+      
+      animationRef.current = setInterval(() => {
+        frame++
+        const progress = Math.min(frame / totalFrames, 1)
+        
+        // Simple bounce: 0 -> -8 -> 0 -> -4 -> 0
+        let y = 0
+        if (progress < 0.25) {
+          y = -8 * (progress / 0.25) // 0 to -8
+        } else if (progress < 0.5) {
+          y = -8 + (8 * ((progress - 0.25) / 0.25)) // -8 to 0
+        } else if (progress < 0.75) {
+          y = -4 * ((progress - 0.5) / 0.25) // 0 to -4
+        } else {
+          y = -4 + (4 * ((progress - 0.75) / 0.25)) // -4 to 0
+        }
+        
+        const roundedY = Math.round(y * 10) / 10
+        console.log(`📊 Frame ${frame}/${totalFrames}, progress: ${progress.toFixed(2)}, bounceY: ${roundedY}`)
+        setBounceY(roundedY)
+        
+        // Stop when done
+        if (frame >= totalFrames) {
+          console.log('🏁 Animation complete')
+          setBounceY(0)
+          if (animationRef.current) {
+            clearInterval(animationRef.current)
+            animationRef.current = null
+          }
+        }
+      }, 20) // 20ms = 50fps
+      
+      console.log('⏰ Interval started, animationRef.current:', animationRef.current)
+      
+      return () => {
+        console.log('🧹 Cleaning up animation interval')
+        if (animationRef.current) {
+          clearInterval(animationRef.current)
+          animationRef.current = null
+        }
+        setBounceY(0)
+      }
+    } else {
+      console.log('❌ Caught is false, resetting bounceY')
+      setBounceY(0)
+      if (animationRef.current) {
+        clearInterval(animationRef.current)
+        animationRef.current = null
+      }
+    }
+  }, [caught])
+  
+  // Log when bounceY changes
+  useEffect(() => {
+    if (caught && bounceY !== 0) {
+      console.log('📍 bounceY updated to:', bounceY)
+    }
+  }, [bounceY, caught])
 
   if (!creature || !creature.creature_types) {
     return null
@@ -136,6 +240,7 @@ export default function CatchModal({ creature, userLocation, onClose, onCatch, o
   }
 
   const handleCatch = async () => {
+    console.log('🎯 handleCatch called, current caught state:', caught)
     if (!userLocation || !lat || !lon) {
       console.error('Missing location data:', { userLocation, lat, lon, creature })
       setError('Location not available')
@@ -164,6 +269,7 @@ export default function CatchModal({ creature, userLocation, onClose, onCatch, o
 
     setCatching(true)
     setError(null)
+    setCaught(false) // Reset caught state immediately
 
     try {
       // Get current user
@@ -342,12 +448,71 @@ export default function CatchModal({ creature, userLocation, onClose, onCatch, o
         // Don't fail the catch if challenge update fails
       }
 
+      console.log('🎣 Setting caught to TRUE! for creature:', creature.id)
+      const caughtCreatureId = creature.id
+      caughtCreatureIdRef.current = caughtCreatureId // Store which creature was caught
       setCaught(true)
+      setCatching(false) // Reset catching state so user can catch again immediately
+      
+      // Start animation IMMEDIATELY by triggering state update synchronously
+      setBounceY(0)
+      shouldStartAnimationRef.current = true
+      
+      // Use requestAnimationFrame to ensure animation starts before parent notification
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          // Simple, clean bounce animation
+          let frame = 0
+          const totalFrames = 40 // ~640ms at 16ms intervals
+          
+          animationRef.current = setInterval(() => {
+            frame++
+            const progress = Math.min(frame / totalFrames, 1)
+            
+            // Simple bounce: smooth up and down motion
+            // Using sine wave for natural bounce feel
+            const bounceHeight = 10 // pixels
+            const bounceCount = 1.5 // number of bounces
+            const y = -Math.abs(Math.sin(progress * Math.PI * bounceCount)) * bounceHeight
+            
+            setBounceY(Math.round(y * 10) / 10)
+            
+            // Apply transform directly to elements
+            [spriteRef.current, emojiRef.current].forEach(el => {
+              if (el && el.offsetParent !== null) {
+                el.style.transform = `translateY(${Math.round(y * 10) / 10}px)`
+                el.style.transition = 'none'
+              }
+            })
+            
+            if (frame >= totalFrames) {
+              setBounceY(0)
+              // Reset transform
+              [spriteRef.current, emojiRef.current].forEach(el => {
+                if (el) {
+                  el.style.transform = 'translateY(0px)'
+                }
+              })
+              if (animationRef.current) {
+                clearInterval(animationRef.current)
+                animationRef.current = null
+              }
+            }
+          }, 16) // ~60fps
+          
+          console.log('✅ Animation interval started for creature:', caughtCreatureId)
+        })
+      })
+      
+      console.log('✅ setCaught(true) called, caughtCreatureIdRef:', caughtCreatureIdRef.current, 'shouldStartAnimation:', shouldStartAnimationRef.current)
 
-      // Notify parent that creature was caught (so it can be removed from map)
-      if (onCatch && creature.id) {
-        onCatch(creature.id)
-      }
+      // Delay notifying parent until after animation starts
+      setTimeout(() => {
+        if (onCatch && caughtCreatureId) {
+          console.log('📢 Notifying parent about catch (after animation started)')
+          onCatch(caughtCreatureId)
+        }
+      }, 200) // Delay to let animation start
 
       // Refresh challenges after a delay to ensure database commit
       setTimeout(() => {
@@ -356,10 +521,10 @@ export default function CatchModal({ creature, userLocation, onClose, onCatch, o
         }
       }, 1000)
 
-      // Close modal after 2.5 seconds (give time for refresh)
+      // Close modal after 1.5 seconds (faster so user can catch again sooner)
       setTimeout(() => {
         onClose()
-      }, 2500)
+      }, 1500)
     } catch (err) {
       setError(err.message)
       setCatching(false)
@@ -418,12 +583,22 @@ export default function CatchModal({ creature, userLocation, onClose, onCatch, o
 
         {caught ? (
           <div className="text-center py-8">
-            <div className="mb-4 animate-catch flex justify-center">
+            <div className="mb-4 flex justify-center">
               {getCreatureSprite(creatureType) ? (
                 <img 
                   src={getCreatureSprite(creatureType)} 
                   alt={creatureType.name}
                   className="w-32 h-32 object-contain"
+                  style={{
+                    transform: `translateY(${bounceY}px) scale(1)`,
+                    willChange: caught ? 'transform' : 'auto',
+                    transition: 'none' // Manual animation control
+                  }}
+                  ref={(el) => {
+                    if (el && caught) {
+                      console.log('🖼️ IMG element ref - transform:', el.style.transform, 'bounceY:', bounceY)
+                    }
+                  }}
                   referrerPolicy="no-referrer"
                   onError={(e) => {
                     e.target.style.display = 'none'
@@ -431,7 +606,20 @@ export default function CatchModal({ creature, userLocation, onClose, onCatch, o
                   }}
                 />
               ) : null}
-              <div className="text-8xl" style={{ display: getCreatureSprite(creatureType) ? 'none' : 'block' }}>
+              <div 
+                className="text-8xl"
+                style={{
+                  display: getCreatureSprite(creatureType) ? 'none' : 'block',
+                  transform: `translateY(${bounceY}px) scale(1)`,
+                  willChange: caught ? 'transform' : 'auto',
+                  transition: 'none' // Manual animation control
+                }}
+                ref={(el) => {
+                  if (el && caught && (!getCreatureSprite(creatureType) || el.style.display !== 'none')) {
+                    console.log('😀 EMOJI element ref - transform:', el.style.transform, 'bounceY:', bounceY, 'display:', el.style.display)
+                  }
+                }}
+              >
                 {getCreatureEmoji(creatureType.name)}
               </div>
             </div>

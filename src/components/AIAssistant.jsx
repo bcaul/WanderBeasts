@@ -9,7 +9,7 @@ export default function AIAssistant({ latitude, longitude, inPark, parkName }) {
   const [recommendations, setRecommendations] = useState([])
   const [loading, setLoading] = useState(false)
   const [expanded, setExpanded] = useState(false)
-  const [minimized, setMinimized] = useState(false)
+  const [minimized, setMinimized] = useState(true) // Start as button only, show content when pressed
 
   useEffect(() => {
     if (!latitude || !longitude) return
@@ -73,12 +73,18 @@ export default function AIAssistant({ latitude, longitude, inPark, parkName }) {
     }
   }
 
+  // Show button when minimized, or show panel when not minimized
   if (minimized) {
     return (
       <div className="absolute bottom-24 right-4 z-10">
         <button
-          onClick={() => setMinimized(false)}
+          onClick={() => {
+            setMinimized(false)
+            setExpanded(true) // Automatically expand content when button is clicked
+          }}
           className="bg-surface/90 backdrop-blur-sm border border-primary rounded-full p-3 shadow-lg hover:bg-surface transition-colors"
+          title="AI Hunting Tips"
+          aria-label="Show AI hunting tips"
         >
           <Sparkles className="text-primary" size={24} />
         </button>
@@ -99,6 +105,7 @@ export default function AIAssistant({ latitude, longitude, inPark, parkName }) {
             <button
               onClick={() => setExpanded(!expanded)}
               className="text-gray-400 hover:text-white transition-colors"
+              aria-label={expanded ? "Collapse tips" : "Expand tips"}
             >
               <ChevronUp
                 size={20}
@@ -108,13 +115,14 @@ export default function AIAssistant({ latitude, longitude, inPark, parkName }) {
             <button
               onClick={() => setMinimized(true)}
               className="text-gray-400 hover:text-white transition-colors"
+              aria-label="Minimize tips"
             >
               <X size={20} />
             </button>
           </div>
         </div>
 
-        {/* Content */}
+        {/* Content - only show when expanded */}
         {expanded && (
           <div className="p-4 space-y-3 max-h-64 overflow-y-auto">
             {loading ? (
