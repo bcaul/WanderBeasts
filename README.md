@@ -109,7 +109,7 @@ The app uses PostgreSQL with PostGIS for geospatial queries:
 - Movement speed checks (anti-cheat)
 - Server-side validation
 - One-time catch per spawn
-- Random CP level assignment (1-100)
+- Random CP level assignment (1-3000)
 
 ### Park Detection
 
